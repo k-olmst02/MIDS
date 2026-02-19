@@ -1,4 +1,4 @@
-# MIDS - Mihcigan Intrusion Detection System
+# MIDS - Michigan Intrusion Detection System
 Devs: Kearston Pearson, Kay'Leigh Olmstead, Joe RIley, Myrna Issa, Ryan Davis, Carson Bird
 
 Winter 2026
