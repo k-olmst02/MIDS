@@ -1,0 +1,11 @@
+<RCC>
+  <qresource>
+    <file>images/midslogo.png</file>
+    <file>images/midslogonobg.png</file>
+    <file>images/dropdownicon.png</file>
+    <file>images/music-play-button-icon-vector.jpg</file>
+    <file>images/settingsicon.png</file>
+    <file>images/startbutton.png</file>
+    <file>images/starticon.jpg</file>
+  </qresource>
+</RCC>
