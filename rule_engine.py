@@ -20,7 +20,7 @@ EVENT_ESCALATION_THRESHOLD = 3  # Alert if 3+ high severity events in short time
 
 # Honeypot Configuration
 HONEYPOT_IPS = ["192.168.1.100"]  # Add your honeypot IPs here
-HONEYPOT_PORTS = [22, 80, 443, 3306]  # Common honeypot ports
+HONEYPOT_PORTS = [22]  # SSH port for honeypot detection
 
 # Critical System Files for Hash Checking
 CRITICAL_FILES = [
@@ -73,6 +73,25 @@ def create_alerts_table(conn):
     conn.commit()
 
 
+def create_honeypot_table(conn):
+    """Create honeypot tracking table if it doesn't exist"""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS honeypot_activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            source_ip TEXT,
+            destination_ip TEXT,
+            port INTEGER,
+            protocol TEXT,
+            attack_type TEXT,
+            severity TEXT,
+            details TEXT,
+            event_ref INTEGER
+        )
+    """)
+    conn.commit()
+
+
 def create_alert(alerts_conn, rule_name, severity, description, event_ref=None):
     alerts_conn.execute(
         """
@@ -85,6 +104,28 @@ def create_alert(alerts_conn, rule_name, severity, description, event_ref=None):
             severity,
             "rules_engine",
             description,
+            event_ref,
+        ),
+    )
+    alerts_conn.commit()
+
+
+def log_honeypot_activity(alerts_conn, source_ip, dest_ip, port, protocol, attack_type, severity, details, event_ref=None):
+    """Log honeypot activity to dedicated table"""
+    alerts_conn.execute(
+        """
+        INSERT INTO honeypot_activity(timestamp, source_ip, destination_ip, port, protocol, attack_type, severity, details, event_ref)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            datetime.utcnow().isoformat(),
+            source_ip,
+            dest_ip,
+            port,
+            protocol,
+            attack_type,
+            severity,
+            details,
             event_ref,
         ),
     )
@@ -182,24 +223,24 @@ def check_db_permissions(logs_conn, alerts_conn):
 def check_honeypot_access(logs_conn, alerts_conn):
     """Detect any connections to honeypot IPs"""
     cur = logs_conn.cursor()
-    
-    ip_list = ",".join([f"'{ip}'" for ip in HONEYPOT_IPS])
-    
+
+    # Check for SSH connections to honeypot
     cur.execute(
-        f"""
+        """
         SELECT id, message
         FROM events
         WHERE
-            (LOWER(message) LIKE '%{HONEYPOT_IPS[0]}%'
+            (LOWER(message) LIKE '%ssh%'
+            OR LOWER(message) LIKE '%port 22%'
             OR LOWER(message) LIKE '%connect%'
             OR LOWER(message) LIKE '%honeypot%')
             AND timestamp > datetime('now', '-5 minutes')
         ORDER BY id DESC
         """
     )
-    
+
     rows = cur.fetchall()
-    
+
     if rows:
         newest = rows[0]["id"]
         if not alert_exists(alerts_conn, "Honeypot Access", newest):
@@ -207,8 +248,21 @@ def check_honeypot_access(logs_conn, alerts_conn):
                 alerts_conn,
                 "Honeypot Access",
                 "critical",
-                f"Connection to honeypot detected. {len(rows)} event(s) detected",
+                f"SSH connection to honeypot detected on port 22. {len(rows)} event(s) detected",
                 newest,
+            )
+
+            # Log detailed honeypot activity
+            log_honeypot_activity(
+                alerts_conn,
+                source_ip="unknown",  # Would need to parse from message
+                dest_ip=HONEYPOT_IPS[0],
+                port=22,
+                protocol="SSH",
+                attack_type="SSH Connection",
+                severity="critical",
+                details=f"SSH connection attempt to honeypot on port 22. Message: {rows[0]['message'][:200]}",
+                event_ref=newest
             )
 
 
