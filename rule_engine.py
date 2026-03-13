@@ -409,7 +409,7 @@ def check_event_escalation(logs_conn, alerts_conn):
         FROM alerts
         WHERE (severity='high' OR severity='critical')
         AND rule_name != 'Event Escalation'
-        AND timestamp > datetime('now', '-2 minutes')  # Extended window
+        AND timestamp > datetime('now', '-2 minutes')
         """
     )
     
