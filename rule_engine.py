@@ -16,7 +16,7 @@ BRUTE_FORCE_THRESHOLD = 5
 NEW_PROCESS_THRESHOLD = 10  # Alert if more than 10 new processes in CHECK_INTERVAL
 NETWORK_ACTIVITY_THRESHOLD = 50  # Alert if more than 50 network events in CHECK_INTERVAL
 FILE_MOD_THRESHOLD = 20  # Alert if more than 20 file modifications in CHECK_INTERVAL
-EVENT_ESCALATION_THRESHOLD = 3  # Alert if 3+ high severity events in short time
+EVENT_ESCALATION_THRESHOLD = 3  # Increased: Alert if 3+ high severity events in short time
 
 # Honeypot Configuration
 HONEYPOT_IPS = ["192.168.1.100"]  # Add your honeypot IPs here
@@ -35,7 +35,7 @@ CRITICAL_FILES = [
 FILE_HASHES = {}
 
 # Authorized Users
-AUTHORIZED_DB_USER = "ec2-user"
+AUTHORIZED_DB_USER = pwd.getpwuid(os.getuid()).pw_name  # Use current user
 EXPECTED_DB_MODE = 0o640
 
 # Suspicious Ports
@@ -388,13 +388,28 @@ def check_event_escalation(logs_conn, alerts_conn):
     """Detect rapid escalation of high-severity events"""
     cur = alerts_conn.cursor()
     
+    # Check for recent escalation alerts to prevent loops (cooldown: 30 seconds)
+    cur.execute(
+        """
+        SELECT timestamp FROM alerts
+        WHERE rule_name = 'Event Escalation'
+        ORDER BY timestamp DESC
+        LIMIT 1
+        """
+    )
+    last_escalation = cur.fetchone()
+    if last_escalation:
+        last_time = datetime.fromisoformat(last_escalation["timestamp"])
+        if (datetime.utcnow() - last_time).total_seconds() < 30:
+            return  # Skip if escalation alert was created recently
+    
     cur.execute(
         """
         SELECT COUNT(*) as count
         FROM alerts
         WHERE (severity='high' OR severity='critical')
         AND rule_name != 'Event Escalation'
-        AND timestamp > datetime('now', '-1 minutes')
+        AND timestamp > datetime('now', '-2 minutes')  # Extended window
         """
     )
     
@@ -407,7 +422,7 @@ def check_event_escalation(logs_conn, alerts_conn):
                 alerts_conn,
                 "Event Escalation",
                 "critical",
-                f"Rapid escalation: {count} high/critical alerts in 1 minute",
+                f"Rapid escalation: {count} high/critical alerts in 2 minutes",
                 count,
             )
 
