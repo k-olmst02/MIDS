@@ -392,7 +392,8 @@ def check_event_escalation(logs_conn, alerts_conn):
         """
         SELECT COUNT(*) as count
         FROM alerts
-        WHERE severity='high' OR severity='critical'
+        WHERE (severity='high' OR severity='critical')
+        AND rule_name != 'Event Escalation'
         AND timestamp > datetime('now', '-1 minutes')
         """
     )
