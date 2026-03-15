@@ -271,7 +271,6 @@ def compute_file_hash(filepath):
 
 def check_file_integrity(logs_conn, alerts_conn):
     """Detect file modifications via hash comparison."""
-    print("Running file integrity check...")
     for filepath in CRITICAL_FILES:
         if not os.path.exists(filepath):
             continue
