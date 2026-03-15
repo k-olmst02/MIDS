@@ -295,6 +295,7 @@ def check_file_integrity(logs_conn, alerts_conn):
                         event_ref,
                     )
             FILE_HASHES[filepath] = current_hash
+            print("Checking file integrity...")
 
 
 # --------------------------
@@ -338,6 +339,9 @@ def check_new_processes(logs_conn, alerts_conn):
 # --------------------------
 
 def check_privilege_escalation(logs_conn, alerts_conn):
+    """
+    Detect realistic privilege escalation attempts instead of normal sudo use.
+    """
     cur = logs_conn.cursor()
 
     cur.execute(
