@@ -270,32 +270,46 @@ def compute_file_hash(filepath):
 
 
 def check_file_integrity(logs_conn, alerts_conn):
-    """Detect file modifications via hash comparison."""
-    for filepath in CRITICAL_FILES:
-        if not os.path.exists(filepath):
-            continue
+    """Detect modifications to critical system files using logged events."""
+    cur = logs_conn.cursor()
 
-        current_hash = compute_file_hash(filepath)
-        if current_hash is None:
-            continue
+    cur.execute(
+        """
+        SELECT id, message
+        FROM events
+        WHERE (
+            LOWER(message) LIKE '%/etc/passwd%'
+            OR LOWER(message) LIKE '%/etc/shadow%'
+            OR LOWER(message) LIKE '%/etc/sudoers%'
+            OR LOWER(message) LIKE '%/etc/ssh/sshd_config%'
+            OR LOWER(message) LIKE '%authorized_keys%'
+        )
+        AND (
+            LOWER(message) LIKE '%write%'
+            OR LOWER(message) LIKE '%modify%'
+            OR LOWER(message) LIKE '%chmod%'
+            OR LOWER(message) LIKE '%delete%'
+            OR LOWER(message) LIKE '%rename%'
+        )
+        AND timestamp > datetime('now', '-5 minutes')
+        ORDER BY id DESC
+        """
+    )
 
-        if filepath not in FILE_HASHES:
-            FILE_HASHES[filepath] = current_hash
-            continue
+    rows = cur.fetchall()
 
-        if FILE_HASHES[filepath] != current_hash:
-            event_ref = abs(hash(filepath))
-            if not alert_exists(alerts_conn, "File Integrity Violation", event_ref):
-                if not recent_alert_exists(alerts_conn, "File Integrity Violation", 10, filepath):
-                    create_alert(
-                        alerts_conn,
-                        "File Integrity Violation",
-                        "critical",
-                        f"Hash mismatch for {filepath}. File has been modified!",
-                        event_ref,
-                    )
-            FILE_HASHES[filepath] = current_hash
+    if rows:
+        newest = rows[0]["id"]
 
+        if not alert_exists(alerts_conn, "File Integrity Violation", newest):
+            if not recent_alert_exists(alerts_conn, "File Integrity Violation", 10):
+                create_alert(
+                    alerts_conn,
+                    "File Integrity Violation",
+                    "critical",
+                    f"Modification detected on critical system file ({len(rows)} events)",
+                    newest,
+                )
 
 # --------------------------
 # New Process Detection
