@@ -338,31 +338,34 @@ def check_new_processes(logs_conn, alerts_conn):
 # --------------------------
 
 def check_privilege_escalation(logs_conn, alerts_conn):
-    """Detect unauthorized privilege escalation attempts."""
     cur = logs_conn.cursor()
 
     cur.execute(
         """
         SELECT id, message
         FROM events
-        WHERE
-            (LOWER(message) LIKE '%sudo%'
-            OR LOWER(message) LIKE '%privilege escalation%'
-            OR LOWER(message) LIKE '%unauthorized privilege%'
-            OR LOWER(message) LIKE '%root access%'
-            OR LOWER(message) LIKE '%elevated privileges%'
-            OR LOWER(message) LIKE '%suid%')
-            AND timestamp > datetime('now', '-5 minutes')
+        WHERE (
+            LOWER(message) LIKE '%authentication failure%'
+            OR LOWER(message) LIKE '%failed password%'
+            OR LOWER(message) LIKE '%invalid user%'
+            OR LOWER(message) LIKE '%user not in sudoers%'
+            OR LOWER(message) LIKE '%incorrect password%'
+            OR LOWER(message) LIKE '%permission denied%'
+            OR LOWER(message) LIKE '%pam_unix(sudo:auth)%'
+            OR LOWER(message) LIKE '%sudo:%'
+        )
+        AND timestamp > datetime('now', '-5 minutes')
         ORDER BY id DESC
         """
     )
 
     rows = cur.fetchall()
 
-    if rows:
-        newest = rows[0]["id"]
+    if len(rows) >= 3:
+        newest = rows[0][0]
+
         if not alert_exists(alerts_conn, "Privilege Escalation Attempt", newest):
-            if not recent_alert_exists(alerts_conn, "Privilege Escalation Attempt", 10):
+            if not recent_alert_exists(alerts_conn, "Privilege Escalation Attempt", 60):
                 create_alert(
                     alerts_conn,
                     "Privilege Escalation Attempt",
@@ -370,7 +373,6 @@ def check_privilege_escalation(logs_conn, alerts_conn):
                     f"Potential privilege escalation detected. {len(rows)} event(s)",
                     newest,
                 )
-
 
 # --------------------------
 # Event Escalation Detection
