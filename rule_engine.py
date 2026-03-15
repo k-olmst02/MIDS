@@ -504,43 +504,33 @@ def check_file_modifications(logs_conn, alerts_conn):
 # --------------------------
 
 def check_suspicious_ports(logs_conn, alerts_conn):
-    """Detect suspicious port opening/closing or SSH changes."""
+    """Detect suspicious connections to high-risk ports."""
     cur = logs_conn.cursor()
 
     cur.execute(
         """
-        SELECT id, message
-        FROM events
-        WHERE
-            (LOWER(message) LIKE '%port%'
-            OR LOWER(message) LIKE '%ssh%'
-            OR LOWER(message) LIKE '%sshd%'
-            OR LOWER(message) LIKE '%listening%'
-            OR LOWER(message) LIKE '%bind%')
-            AND (LOWER(message) LIKE '%open%'
-            OR LOWER(message) LIKE '%close%'
-            OR LOWER(message) LIKE '%change%'
-            OR LOWER(message) LIKE '%modify%')
-            AND timestamp > datetime('now', '-5 minutes')
-        ORDER BY id DESC
+        SELECT rowid, dest_port, dest_ip
+        FROM network_activity
+        WHERE dest_port IN (4444, 5555, 6666, 8888, 9999)
+        ORDER BY rowid DESC
+        LIMIT 10
         """
     )
 
     rows = cur.fetchall()
 
     if rows:
-        newest = rows[0]["id"]
+        newest = rows[0]["rowid"]
+
         if not alert_exists(alerts_conn, "Suspicious Port Activity", newest):
-            if not recent_alert_exists(alerts_conn, "Suspicious Port Activity", 10):
+            if not recent_alert_exists(alerts_conn, "Suspicious Port Activity", 30):
                 create_alert(
                     alerts_conn,
                     "Suspicious Port Activity",
                     "high",
-                    f"Suspicious port/SSH activity detected. {len(rows)} event(s)",
+                    f"Connection detected on suspicious port {rows[0]['dest_port']}",
                     newest,
                 )
-
-
 # --------------------------
 # Main Loop
 # --------------------------
