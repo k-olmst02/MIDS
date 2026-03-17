@@ -4,10 +4,12 @@ import pwd
 import sqlite3
 import stat
 import time
+import json
 from datetime import datetime
 
 DB_PATH = "/var/lib/hids_collector/logs.db"
 ALERTS_DB_PATH = "/var/lib/hids_collector/alerts.db"
+STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
 CHECK_INTERVAL = 5
 
 # Rule Thresholds
@@ -19,7 +21,7 @@ EVENT_ESCALATION_THRESHOLD = 3
 
 # Honeypot Configuration
 HONEYPOT_IPS = ["192.168.1.100"]
-HONEYPOT_PORTS = [22, 80, 443, 3306]
+HONEYPOT_PORTS = [22]
 
 # Only risky actions count as real integrity violations
 RISKY_FILE_ACTIONS = ("write", "chmod", "rename", "unlink")
@@ -142,25 +144,85 @@ def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains
     return cur.fetchone() is not None
 
 
+def get_current_max_ids(logs_conn):
+    """Initialize state to current DB max IDs so old rows are ignored."""
+    cur = logs_conn.cursor()
+    state = {
+        "brute_force_events": 0,
+        "priv_esc_events": 0,
+        "new_processes": 0,
+        "honeypot_network": 0,
+        "network_anomalies": 0,
+        "suspicious_ports": 0,
+        "file_integrity": 0,
+        "file_modifications": 0,
+    }
+
+    cur.execute("SELECT COALESCE(MAX(id), 0) AS max_id FROM events")
+    max_events = cur.fetchone()["max_id"]
+    state["brute_force_events"] = max_events
+    state["priv_esc_events"] = max_events
+
+    cur.execute("SELECT COALESCE(MAX(rowid), 0) AS max_id FROM processes")
+    state["new_processes"] = cur.fetchone()["max_id"]
+
+    cur.execute("SELECT COALESCE(MAX(id), 0) AS max_id FROM file_integrity")
+    max_file = cur.fetchone()["max_id"]
+    state["file_integrity"] = max_file
+    state["file_modifications"] = max_file
+
+    cur.execute("SELECT COALESCE(MAX(rowid), 0) AS max_id FROM network_activity")
+    max_net = cur.fetchone()["max_id"]
+    state["honeypot_network"] = max_net
+    state["network_anomalies"] = max_net
+    state["suspicious_ports"] = max_net
+
+    return state
+
+
+def load_state(logs_conn):
+    """Load last processed IDs from JSON state file."""
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    return get_current_max_ids(logs_conn)
+
+
+def save_state(state):
+    """Save last processed IDs to JSON state file."""
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception as e:
+        print(f"[STATE SAVE ERROR] {e}")
+
+
 # --------------------------
 # Brute Force Rule
 # --------------------------
 
-def check_brute_force(logs_conn, alerts_conn):
+def check_brute_force(logs_conn, alerts_conn, state):
     cur = logs_conn.cursor()
 
     cur.execute(
         """
         SELECT id, message
         FROM events
-        WHERE
+        WHERE id > ?
+          AND (
             LOWER(message) LIKE '%failed%'
             OR LOWER(message) LIKE '%authentication failure%'
             OR LOWER(message) LIKE '%invalid user%'
             OR LOWER(message) LIKE '%failed password%'
+          )
         ORDER BY id DESC
         LIMIT 25
-        """
+        """,
+        (state["brute_force_events"],)
     )
 
     rows = cur.fetchall()
@@ -177,6 +239,12 @@ def check_brute_force(logs_conn, alerts_conn):
                     f"Detected {len(rows)} recent failed authentication events",
                     newest,
                 )
+
+    if rows:
+        state["brute_force_events"] = max(
+            state["brute_force_events"],
+            max(row["id"] for row in rows)
+        )
 
 
 # --------------------------
@@ -223,7 +291,7 @@ def check_db_permissions(logs_conn, alerts_conn):
 # Honeypot Connection Detection
 # --------------------------
 
-def check_honeypot_access(logs_conn, alerts_conn):
+def check_honeypot_access(logs_conn, alerts_conn, state):
     """Detect connections to honeypot IPs or honeypot ports."""
     cur = logs_conn.cursor()
 
@@ -231,9 +299,11 @@ def check_honeypot_access(logs_conn, alerts_conn):
         """
         SELECT rowid AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
+        WHERE rowid > ?
         ORDER BY rowid DESC
         LIMIT 100
-        """
+        """,
+        (state["honeypot_network"],)
     )
 
     rows = cur.fetchall()
@@ -263,12 +333,18 @@ def check_honeypot_access(logs_conn, alerts_conn):
                     newest,
                 )
 
+    if rows:
+        state["honeypot_network"] = max(
+            state["honeypot_network"],
+            max(row["event_id"] for row in rows)
+        )
+
 
 # --------------------------
 # File Integrity Detection
 # --------------------------
 
-def check_file_integrity(logs_conn, alerts_conn):
+def check_file_integrity(logs_conn, alerts_conn, state):
     """Detect activity on critical files from file_integrity table."""
     cur = logs_conn.cursor()
 
@@ -276,15 +352,17 @@ def check_file_integrity(logs_conn, alerts_conn):
         """
         SELECT id, path, action
         FROM file_integrity
+        WHERE id > ?
         ORDER BY id DESC
         LIMIT 100
-        """
+        """,
+        (state["file_integrity"],)
     )
 
     rows = cur.fetchall()
 
     for row in rows:
-        if row["path"] in CRITICAL_FILES:
+        if row["path"] in CRITICAL_FILES and row["action"] in RISKY_FILE_ACTIONS:
             newest = row["id"]
             desc = f"Critical file activity detected: {row['action']} on {row['path']}"
 
@@ -297,14 +375,19 @@ def check_file_integrity(logs_conn, alerts_conn):
                         desc,
                         newest,
                     )
-            break
+
+    if rows:
+        state["file_integrity"] = max(
+            state["file_integrity"],
+            max(row["id"] for row in rows)
+        )
 
 
 # --------------------------
 # New Process Detection
 # --------------------------
 
-def check_new_processes(logs_conn, alerts_conn):
+def check_new_processes(logs_conn, alerts_conn, state):
     """Detect bursts of process creation from processes table."""
     cur = logs_conn.cursor()
 
@@ -312,9 +395,11 @@ def check_new_processes(logs_conn, alerts_conn):
         """
         SELECT rowid AS event_id, pid, username, command
         FROM processes
+        WHERE rowid > ?
         ORDER BY rowid DESC
         LIMIT 100
-        """
+        """,
+        (state["new_processes"],)
     )
 
     rows = cur.fetchall()
@@ -332,12 +417,18 @@ def check_new_processes(logs_conn, alerts_conn):
                     newest,
                 )
 
+    if rows:
+        state["new_processes"] = max(
+            state["new_processes"],
+            max(row["event_id"] for row in rows)
+        )
+
 
 # --------------------------
 # Privilege Escalation Detection
 # --------------------------
 
-def check_privilege_escalation(logs_conn, alerts_conn):
+def check_privilege_escalation(logs_conn, alerts_conn, state):
     """Detect privilege escalation attempts from auth-related events."""
     cur = logs_conn.cursor()
 
@@ -345,7 +436,8 @@ def check_privilege_escalation(logs_conn, alerts_conn):
         """
         SELECT id, message
         FROM events
-        WHERE (
+        WHERE id > ?
+          AND (
             LOWER(message) LIKE '%authentication failure%'
             OR LOWER(message) LIKE '%failed password%'
             OR LOWER(message) LIKE '%invalid user%'
@@ -354,10 +446,11 @@ def check_privilege_escalation(logs_conn, alerts_conn):
             OR LOWER(message) LIKE '%permission denied%'
             OR LOWER(message) LIKE '%pam_unix(sudo:auth)%'
             OR LOWER(message) LIKE '%sudo:%'
-        )
-        AND timestamp > datetime('now', '-5 minutes')
+          )
         ORDER BY id DESC
-        """
+        LIMIT 50
+        """,
+        (state["priv_esc_events"],)
     )
 
     rows = cur.fetchall()
@@ -374,6 +467,12 @@ def check_privilege_escalation(logs_conn, alerts_conn):
                     f"Potential privilege escalation detected. {len(rows)} event(s)",
                     newest,
                 )
+
+    if rows:
+        state["priv_esc_events"] = max(
+            state["priv_esc_events"],
+            max(row["id"] for row in rows)
+        )
 
 
 # --------------------------
@@ -412,7 +511,7 @@ def check_event_escalation(logs_conn, alerts_conn):
 # Network Activity Detection
 # --------------------------
 
-def check_network_anomalies(logs_conn, alerts_conn):
+def check_network_anomalies(logs_conn, alerts_conn, state):
     """Detect unusual network activity from network_activity table."""
     cur = logs_conn.cursor()
 
@@ -420,9 +519,11 @@ def check_network_anomalies(logs_conn, alerts_conn):
         """
         SELECT rowid AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
+        WHERE rowid > ?
         ORDER BY rowid DESC
         LIMIT 100
-        """
+        """,
+        (state["network_anomalies"],)
     )
 
     rows = cur.fetchall()
@@ -440,12 +541,18 @@ def check_network_anomalies(logs_conn, alerts_conn):
                     newest,
                 )
 
+    if rows:
+        state["network_anomalies"] = max(
+            state["network_anomalies"],
+            max(row["event_id"] for row in rows)
+        )
+
 
 # --------------------------
 # File Modification Detection
 # --------------------------
 
-def check_file_modifications(logs_conn, alerts_conn):
+def check_file_modifications(logs_conn, alerts_conn, state):
     """Detect excessive file modifications from file_integrity table."""
     cur = logs_conn.cursor()
 
@@ -453,10 +560,12 @@ def check_file_modifications(logs_conn, alerts_conn):
         """
         SELECT id, path, action
         FROM file_integrity
-        WHERE action IN ('write', 'unlink', 'rename', 'chmod')
+        WHERE id > ?
+          AND action IN ('write', 'unlink', 'rename', 'chmod')
         ORDER BY id DESC
         LIMIT 100
-        """
+        """,
+        (state["file_modifications"],)
     )
 
     rows = cur.fetchall()
@@ -474,12 +583,18 @@ def check_file_modifications(logs_conn, alerts_conn):
                     newest,
                 )
 
+    if rows:
+        state["file_modifications"] = max(
+            state["file_modifications"],
+            max(row["id"] for row in rows)
+        )
+
 
 # --------------------------
 # Suspicious Port Activity
 # --------------------------
 
-def check_suspicious_ports(logs_conn, alerts_conn):
+def check_suspicious_ports(logs_conn, alerts_conn, state):
     """Detect suspicious connections to high-risk ports."""
     cur = logs_conn.cursor()
 
@@ -487,9 +602,11 @@ def check_suspicious_ports(logs_conn, alerts_conn):
         """
         SELECT rowid AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
+        WHERE rowid > ?
         ORDER BY rowid DESC
         LIMIT 100
-        """
+        """,
+        (state["suspicious_ports"],)
     )
 
     rows = cur.fetchall()
@@ -518,6 +635,12 @@ def check_suspicious_ports(logs_conn, alerts_conn):
                     newest,
                 )
 
+    if rows:
+        state["suspicious_ports"] = max(
+            state["suspicious_ports"],
+            max(row["event_id"] for row in rows)
+        )
+
 
 # --------------------------
 # Main Loop
@@ -527,6 +650,7 @@ def main():
     print("Rule engine started")
     print("Logs database: " + DB_PATH)
     print("Alerts database: " + ALERTS_DB_PATH)
+    print("State file: " + STATE_FILE)
     print("Running rules:")
     print("  - Brute Force Detection")
     print("  - Database Access Control")
@@ -543,17 +667,20 @@ def main():
         try:
             logs_conn = connect_db()
             alerts_conn = connect_alerts_db()
+            state = load_state(logs_conn)
 
-            check_brute_force(logs_conn, alerts_conn)
+            check_brute_force(logs_conn, alerts_conn, state)
             check_db_permissions(logs_conn, alerts_conn)
-            check_honeypot_access(logs_conn, alerts_conn)
-            check_file_integrity(logs_conn, alerts_conn)
-            check_new_processes(logs_conn, alerts_conn)
-            check_privilege_escalation(logs_conn, alerts_conn)
+            check_honeypot_access(logs_conn, alerts_conn, state)
+            check_file_integrity(logs_conn, alerts_conn, state)
+            check_new_processes(logs_conn, alerts_conn, state)
+            check_privilege_escalation(logs_conn, alerts_conn, state)
             check_event_escalation(logs_conn, alerts_conn)
-            check_network_anomalies(logs_conn, alerts_conn)
-            check_file_modifications(logs_conn, alerts_conn)
-            check_suspicious_ports(logs_conn, alerts_conn)
+            check_network_anomalies(logs_conn, alerts_conn, state)
+            check_file_modifications(logs_conn, alerts_conn, state)
+            check_suspicious_ports(logs_conn, alerts_conn, state)
+
+            save_state(state)
 
             logs_conn.close()
             alerts_conn.close()
