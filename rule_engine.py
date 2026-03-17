@@ -182,14 +182,23 @@ def get_current_max_ids(logs_conn):
 
 def load_state(logs_conn):
     """Load last processed IDs from JSON state file."""
+    default_state = get_current_max_ids(logs_conn)
+
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
-                return json.load(f)
+                saved_state = json.load(f)
+
+            # Fill in any missing keys from defaults
+            for key, value in default_state.items():
+                if key not in saved_state:
+                    saved_state[key] = value
+
+            return saved_state
         except Exception:
             pass
 
-    return get_current_max_ids(logs_conn)
+    return default_state
 
 
 def save_state(state):
