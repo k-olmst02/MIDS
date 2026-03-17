@@ -12,14 +12,17 @@ CHECK_INTERVAL = 5
 
 # Rule Thresholds
 BRUTE_FORCE_THRESHOLD = 5
-NEW_PROCESS_THRESHOLD = 10
-NETWORK_ACTIVITY_THRESHOLD = 20
-FILE_MOD_THRESHOLD = 10
+NEW_PROCESS_THRESHOLD = 50
+NETWORK_ACTIVITY_THRESHOLD = 75
+FILE_MOD_THRESHOLD = 50
 EVENT_ESCALATION_THRESHOLD = 3
 
 # Honeypot Configuration
 HONEYPOT_IPS = ["192.168.1.100"]
 HONEYPOT_PORTS = [22, 80, 443, 3306]
+
+# Only risky actions count as real integrity violations
+RISKY_FILE_ACTIONS = ("write", "chmod", "rename", "unlink")
 
 # Critical System Files
 CRITICAL_FILES = [
