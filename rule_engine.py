@@ -509,18 +509,28 @@ def check_suspicious_ports(logs_conn, alerts_conn):
 
     cur.execute(
         """
-        SELECT rowid, dest_port, dest_ip
+        SELECT rowid AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
-        WHERE dest_port IN (4444, 5555, 6666, 8888, 9999)
         ORDER BY rowid DESC
-        LIMIT 10
+        LIMIT 100
         """
     )
 
     rows = cur.fetchall()
 
-    if rows:
-        newest = rows[0]["rowid"]
+    matches = []
+    for row in rows:
+        local_addr = (row["local_address"] or "").lower()
+        remote_addr = (row["remote_address"] or "").lower()
+
+        for port in SUSPICIOUS_PORTS:
+            if local_addr.endswith(f":{port}") or remote_addr.endswith(f":{port}"):
+                matches.append((row, port))
+                break
+
+    if matches:
+        newest = matches[0][0]["event_id"]
+        port = matches[0][1]
 
         if not alert_exists(alerts_conn, "Suspicious Port Activity", newest):
             if not recent_alert_exists(alerts_conn, "Suspicious Port Activity", 30):
@@ -528,7 +538,7 @@ def check_suspicious_ports(logs_conn, alerts_conn):
                     alerts_conn,
                     "Suspicious Port Activity",
                     "high",
-                    f"Connection detected on suspicious port {rows[0]['dest_port']}",
+                    f"Connection detected on suspicious port {port}",
                     newest,
                 )
 # --------------------------
