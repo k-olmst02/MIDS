@@ -1,40 +1,142 @@
 #!/usr/bin/env python3
-import io
-import json
-import logging
-import os
-import pwd
-import re
 import sqlite3
+import subprocess
 import time
 
-AUDIT_LOG = "/var/log/audit/audit.log"
-STATE_DIR = "/var/lib/hids_collector"
-OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
-DB_PATH = os.path.join(STATE_DIR, "logs.db")
-SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10
-
-TYPE_RE = re.compile(r"^type=([A-Z_]+)\s")
-MSG_RE = re.compile(r"msg=audit\((\d+(?:\.\d+)?):(\d+)\):")
-KV_RE = re.compile(r'(\w+)=("([^"\\]|\\.)*"|\S+)')
-SYSCALL_NAME = {"59": "execve", "2": "open", "257": "open", "1": "write", "87": "unlink", "263": "unlink",
-                "82": "rename", "264": "rename", "90": "chmod", "268": "chmod", "42": "connect",
-                "43": "accept", "49": "bind"}
-FILE_ACTIONS, NET_ACTIONS = {"open", "write", "unlink", "rename", "chmod"}, {"connect", "accept", "bind"}
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+DB_PATH = "/var/lib/hids_collector/logs.db"
 
 
-#Parse key values
-def get_kv(line):
-    out = {}
-    for k, v, _ in KV_RE.findall(line):
-        out[k] = v[1:-1] if v.startswith('"') and v.endswith('"') else v
-    return out
+class Collector:
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.conn.row_factory = sqlite3.Row
+        self.create_tables()
+
+    def create_tables(self):
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT,
+                message TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS processes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pid INTEGER,
+                ppid INTEGER,
+                username TEXT,
+                command TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS file_integrity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT,
+                action TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS network_activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_address TEXT,
+                remote_address TEXT,
+                pid INTEGER,
+                process_name TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        self.conn.commit()
+
+    def put_evt(self, event_type, message):
+        self.conn.execute(
+            "INSERT INTO events (event_type, message) VALUES (?, ?)",
+            (event_type, message)
+        )
+        self.conn.commit()
+
+    def flush_ev(self, ev):
+        """
+        Process a grouped audit event
+        """
+
+        types = ev.get("types", set())
+        raw = ev.get("raw", [])
+
+        # 🔥 IMPORTANT CHANGE:
+        # Always store raw audit event in events table
+        self.put_evt(",".join(sorted(types)) or "UNKNOWN", "".join(raw))
+
+        # Existing parsing logic (simplified but safe)
+        for line in raw:
+
+            # Process detection
+            if "type=EXECVE" in line:
+                self.conn.execute(
+                    "INSERT INTO processes (pid, ppid, username, command) VALUES (?, ?, ?, ?)",
+                    (0, 0, "unknown", line.strip())
+                )
+
+            # File activity
+            if "type=PATH" in line:
+                self.conn.execute(
+                    "INSERT INTO file_integrity (path, action) VALUES (?, ?)",
+                    ("unknown", "access")
+                )
+
+            # Network activity
+            if "type=SYSCALL" in line and "connect" in line.lower():
+                self.conn.execute(
+                    "INSERT INTO network_activity (local_address, remote_address, pid, process_name) VALUES (?, ?, ?, ?)",
+                    ("unknown", "unknown", 0, "unknown")
+                )
+
+        self.conn.commit()
+
+    def run(self):
+        print("Collector started...")
+
+        proc = subprocess.Popen(
+            ["sudo", "tail", "-F", "/var/log/audit/audit.log"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        current_event = {"types": set(), "raw": []}
+
+        for line in proc.stdout:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            # Detect new event boundary
+            if "type=" in line and current_event["raw"]:
+                self.flush_ev(current_event)
+                current_event = {"types": set(), "raw": []}
+
+            # Track event types
+            if "type=" in line:
+                try:
+                    t = line.split("type=")[1].split()[0]
+                    current_event["types"].add(t)
+                except Exception:
+                    pass
+
+            current_event["raw"].append(line)
 
 
-#Parse audit header
-def get_head(line):
-    tm, mm = TYPE_RE.search(line), MSG_RE.search(line)
+if __name__ == "__main__":
+    c = Collector()
+    c.run()    tm, mm = TYPE_RE.search(line), MSG_RE.search(line)
     typ = tm.group(1) if tm else "UNKNOWN"
     return (typ, None, None) if not mm else (typ, float(mm.group(1)), int(mm.group(2)))
 
