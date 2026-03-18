@@ -218,37 +218,38 @@ def check_brute_force(logs_conn, alerts_conn, state):
     cur = logs_conn.cursor()
 
     cur.execute(
-    """
-    SELECT id, message
-    FROM events
-    WHERE id > ?
-      AND (
-        LOWER(message) LIKE '%res=failed%'
-        OR LOWER(message) LIKE '%type=user_auth%'
-        OR LOWER(message) LIKE '%failed password%'
-        OR LOWER(message) LIKE '%authentication failure%'
-        OR LOWER(message) LIKE '%invalid user%'
-      )
-    ORDER BY id DESC
-    LIMIT 50
-    """,
-    (state["brute_force_events"],)
+        """
+        SELECT id, message
+        FROM events
+        WHERE id > ?
+          AND (
+            LOWER(message) LIKE '%type=user_auth%'
+            OR LOWER(message) LIKE '%type=user_cmd%'
+            OR LOWER(message) LIKE '%res=failed%'
+            OR LOWER(message) LIKE '%failed password%'
+            OR LOWER(message) LIKE '%authentication failure%'
+            OR LOWER(message) LIKE '%invalid user%'
+          )
+        ORDER BY id DESC
+        LIMIT 50
+        """,
+        (state["brute_force_events"],)
     )
 
     rows = cur.fetchall()
+    print(f"[DEBUG brute_force rows] {len(rows)}")
 
-    if len(rows) >= BRUTE_FORCE_THRESHOLD:
+    if len(rows) >= 3:
         newest = rows[0]["id"]
 
         if not alert_exists(alerts_conn, "Brute Force Login", newest):
-            if not recent_alert_exists(alerts_conn, "Brute Force Login", 120):
-                create_alert(
-                    alerts_conn,
-                    "Brute Force Login",
-                    "high",
-                    f"Detected {len(rows)} recent failed authentication events",
-                    newest,
-                )
+            create_alert(
+                alerts_conn,
+                "Brute Force Login",
+                "high",
+                f"Detected {len(rows)} recent failed authentication events",
+                newest,
+            )
 
     if rows:
         state["brute_force_events"] = max(
