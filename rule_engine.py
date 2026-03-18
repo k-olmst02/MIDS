@@ -218,20 +218,21 @@ def check_brute_force(logs_conn, alerts_conn, state):
     cur = logs_conn.cursor()
 
     cur.execute(
-        """
-        SELECT id, message
-        FROM events
-        WHERE id > ?
-          AND (
-            LOWER(message) LIKE '%failed%'
-            OR LOWER(message) LIKE '%authentication failure%'
-            OR LOWER(message) LIKE '%invalid user%'
-            OR LOWER(message) LIKE '%failed password%'
-          )
-        ORDER BY id DESC
-        LIMIT 25
-        """,
-        (state["brute_force_events"],)
+    """
+    SELECT id, message
+    FROM events
+    WHERE id > ?
+      AND (
+        LOWER(message) LIKE '%res=failed%'
+        OR LOWER(message) LIKE '%type=user_auth%'
+        OR LOWER(message) LIKE '%failed password%'
+        OR LOWER(message) LIKE '%authentication failure%'
+        OR LOWER(message) LIKE '%invalid user%'
+      )
+    ORDER BY id DESC
+    LIMIT 50
+    """,
+    (state["brute_force_events"],)
     )
 
     rows = cur.fetchall()
