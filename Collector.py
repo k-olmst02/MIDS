@@ -177,21 +177,14 @@ class Collector:
         )
 
     #Route grouped event
-    def flush_ev(self, ev):
-        types = ev.get("types", set())
-        sc = ev.get("syscall", "")
-        done = False
-        if "EXECVE" in types or sc == "execve":
-            self.put_proc(ev)
-            done = True
-        if sc in FILE_ACTIONS and ev.get("paths"):
-            self.put_file(ev)
-            done = True
-        if sc in NET_ACTIONS and ev.get("sockaddrs"):
-            self.put_net(ev)
-            done = True
-        if not done:
-            self.put_evt(",".join(sorted(types)) or "UNKNOWN", "".join(ev.get("raw", [])))
+   def flush_ev(self, ev):
+    types = ev.get("types", set())
+    sc = ev.get("syscall", "")
+
+    # Always keep a raw copy in events for text-based rules
+    self.put_evt(",".join(sorted(types)) or "UNKNOWN", "".join(ev.get("raw", [])))
+
+    done = False
 
     #Process audit line
     def add_line(self, line):
