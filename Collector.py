@@ -178,7 +178,7 @@ class Collector:
 
     #Route grouped event
     def flush_ev(self, ev):
-     types = ev.get("types", set())
+        types = ev.get("types", set())
     sc = ev.get("syscall", "")
 
     # Always keep a raw copy in events for text-based rules
