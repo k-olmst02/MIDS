@@ -178,13 +178,12 @@ class Collector:
 
     #Route grouped event
    def flush_ev(self, ev):
-    types = ev.get("types", set())
-    sc = ev.get("syscall", "")
-
-    # Always keep a raw copy in events for text-based rules
-    self.put_evt(",".join(sorted(types)) or "UNKNOWN", "".join(ev.get("raw", [])))
-
-    done = False
+     types = ev.get("types", set())
+     sc = ev.get("syscall", "")
+     
+     # Always keep a raw copy in events for text-based rules
+     self.put_evt(",".join(sorted(types)) or "UNKNOWN", "".join(ev.get("raw", [])))
+     done = False
 
     #Process audit line
     def add_line(self, line):
