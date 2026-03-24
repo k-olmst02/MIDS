@@ -1,0 +1,75 @@
+CREATE TABLE hosts (
+    host_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hostname TEXT,
+    ip_address TEXT,
+    os TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP);  
+--Monitors each of the host in the HIDS system
+     
+CREATE TABLE logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host_id INTEGER,
+    log_type TEXT,
+    message TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (host_id) REFERENCES hosts(host_id)
+); --Stores the system logs collected from the hosts
+
+CREATE TABLE signatures (
+    signature_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    description TEXT,
+    severity TEXT CHECK (severity IN ('low', 'medium', 'high')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+); --Detection rules which are used to identify threats
+
+CREATE TABLE honeypot_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_ip TEXT NOT NULL,
+    source_port INTEGER NOT NULL,
+    destination_port INTEGER NOT NULL,
+    protocol TEXT DEFAULT 'TCP',
+    raw_data TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+--This table logs the interactions from an attacker with the SSH honeypot
+
+CREATE TABLE alerts (
+    alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER,
+    log_id INTEGER,
+    signature_id INTEGER,
+    alert_type TEXT, 
+    severity TEXT CHECK (severity IN ('low', 'medium', 'high')) NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'open', -- open, investigating, resolved
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES honeypot_events(event_id),
+    FOREIGN KEY (log_id) REFERENCES logs(log_id),
+    FOREIGN KEY (signature_id) REFERENCES signatures(signature_id)); 
+--This tabler keeps all alerts from both honeypot and HIDS detection to act as an alert
+
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'admin',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+); --This is the dashboard login for admin users only!
+
+CREATE TABLE incident_notes (
+    note_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alert_id INTEGER,
+    user_id INTEGER,
+    note TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (alert_id) REFERENCES alerts(alert_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+); --This a table that allows analysts to add notes to alerts for investigation
+
+CREATE INDEX idx_logs_host ON logs(host_id);
+CREATE INDEX idx_honeypot_ip ON honeypot_events(source_ip);
+CREATE INDEX idx_alerts_event ON alerts(event_id);
+CREATE INDEX idx_alerts_log ON alerts(log_id);
+CREATE INDEX idx_alerts_severity ON alerts(severity);
