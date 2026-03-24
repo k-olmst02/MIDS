@@ -4,7 +4,7 @@ import sqlite3
 DB_PATH = "mids.db"
 
 HOST = "0.0.0.0"
-PORT = 2222
+PORT = 22
 
 
 def get_db():
