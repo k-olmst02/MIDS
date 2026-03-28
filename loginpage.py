@@ -1,8 +1,9 @@
-import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect
+import sys, hashlib, sqlite3
+from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QMessageBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtCore import Qt
+from mids import MySideBar
 
 app = QApplication(sys.argv)
 loader = QUiLoader()
@@ -36,7 +37,39 @@ shadow.setColor(QColor(0, 0, 0, 80))
 shadow.setOffset(-8, 0)
 window.rightPanel.setGraphicsEffect(shadow)
 
+#Hashing and login
+def hashing(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
+def login():
+    username = window.usernameEntryBox.text()
+    password = window.passwordEntryBox.text()
+    
+    if not username or not password:
+        QMessageBox.warning(window, "Input Error", "Please enter both a username and password.")
+    
+    try:
+        attempt = hashing(password)
+        
+        connect = sqlite3.connect("logininfo.db")
+        cursor = connect.cursor()
+        cursor.execute("SELECT password_hash FROM logininfo WHERE username = ?", (username,))
+        result = cursor.fetchone()
+        connect.close()
+    
+        if result and result[0] == attempt:
+            QMessageBox.information(window, "Login Success", f"Welcome back, {username}.")
+            
+            global dashboard
+            dashboard = MySideBar(username)
+            
+            dashboard.show()
+            window.close()
+        else: 
+            QMessageBox.critical(window, "Login Failed", "Incorrect username or password.")
+    except sqlite3.Error as e:
+        QMessageBox.critical(window, "Database Error", f"Could not connect to database: {e}")
+window.loginButton.clicked.connect(login)
 
 window.show()
 app.exec()

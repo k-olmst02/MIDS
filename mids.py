@@ -2,9 +2,11 @@ from dashboard import Ui_MainWindow
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
 from PySide6.QtGui import QColor, QIcon
 class MySideBar(QMainWindow, Ui_MainWindow):
-    def __init__(self):
+    def __init__(self, username = "Default_Admin"):
         super().__init__()
         self.setupUi(self)
+        if hasattr(self, 'user_label'):
+            self.user_label.setText(f"{username}")
         self.setWindowTitle("Michigan Intrusion Detection System")
         self.setWindowIcon(QIcon("images/midslogonobg.png"))
         
