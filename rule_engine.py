@@ -237,7 +237,6 @@ def check_brute_force(logs_conn, alerts_conn, state):
     )
 
     rows = cur.fetchall()
-    print(f"[DEBUG brute_force rows] {len(rows)}")
 
     if len(rows) >= 3:
         newest = rows[0]["id"]
