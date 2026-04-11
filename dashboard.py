@@ -15,9 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout, QLabel,
-    QMainWindow, QPushButton, QSizePolicy, QSpacerItem,
-    QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QGridLayout, QGroupBox, QHBoxLayout,
+    QHeaderView, QLabel, QMainWindow, QPushButton,
+    QSizePolicy, QSpacerItem, QStackedWidget, QTableView,
+    QVBoxLayout, QWidget)
 import resources_rc
 
 class Ui_MainWindow(object):
@@ -31,6 +32,126 @@ class Ui_MainWindow(object):
         self.gridLayout = QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        self.main_dashboard = QWidget(self.centralwidget)
+        self.main_dashboard.setObjectName(u"main_dashboard")
+        self.verticalLayout_5 = QVBoxLayout(self.main_dashboard)
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.header_widget = QWidget(self.main_dashboard)
+        self.header_widget.setObjectName(u"header_widget")
+        self.horizontalLayout_3 = QHBoxLayout(self.header_widget)
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.menu = QPushButton(self.header_widget)
+        self.menu.setObjectName(u"menu")
+        self.menu.setMinimumSize(QSize(0, 0))
+        self.menu.setStyleSheet(u"border:none;")
+        icon = QIcon()
+        icon.addFile(u":/images/dropdownicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.menu.setIcon(icon)
+        self.menu.setIconSize(QSize(20, 20))
+        self.menu.setCheckable(True)
+
+        self.horizontalLayout_3.addWidget(self.menu)
+
+        self.horizontalSpacer = QSpacerItem(266, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_3.addItem(self.horizontalSpacer)
+
+        self.label_2 = QLabel(self.header_widget)
+        self.label_2.setObjectName(u"label_2")
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        self.label_2.setFont(font)
+
+        self.horizontalLayout_3.addWidget(self.label_2)
+
+        self.horizontalSpacer_2 = QSpacerItem(266, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_3.addItem(self.horizontalSpacer_2)
+
+        self.pushButton_15 = QPushButton(self.header_widget)
+        self.pushButton_15.setObjectName(u"pushButton_15")
+        self.pushButton_15.setStyleSheet(u"border:none;")
+        icon1 = QIcon()
+        icon1.addFile(u":/images/settingsicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.pushButton_15.setIcon(icon1)
+        self.pushButton_15.setIconSize(QSize(20, 20))
+
+        self.horizontalLayout_3.addWidget(self.pushButton_15)
+
+
+        self.verticalLayout_5.addWidget(self.header_widget)
+
+        self.stackedWidget = QStackedWidget(self.main_dashboard)
+        self.stackedWidget.setObjectName(u"stackedWidget")
+        self.stackedWidget.setStyleSheet(u"background-color: rgb(255, 255, 255);")
+        self.dashboard_page = QWidget()
+        self.dashboard_page.setObjectName(u"dashboard_page")
+        self.gridLayout_2 = QGridLayout(self.dashboard_page)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.groupBox_2 = QGroupBox(self.dashboard_page)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.verticalLayout_9 = QVBoxLayout(self.groupBox_2)
+        self.verticalLayout_9.setObjectName(u"verticalLayout_9")
+        self.chartLabel = QLabel(self.groupBox_2)
+        self.chartLabel.setObjectName(u"chartLabel")
+
+        self.verticalLayout_9.addWidget(self.chartLabel)
+
+
+        self.gridLayout_2.addWidget(self.groupBox_2, 0, 1, 1, 1)
+
+        self.groupBox = QGroupBox(self.dashboard_page)
+        self.groupBox.setObjectName(u"groupBox")
+        self.dashboardAlertTable = QTableView(self.groupBox)
+        self.dashboardAlertTable.setObjectName(u"dashboardAlertTable")
+        self.dashboardAlertTable.setGeometry(QRect(11, 27, 256, 192))
+        self.dashboardAlertTable.setAutoFillBackground(False)
+
+        self.gridLayout_2.addWidget(self.groupBox, 0, 0, 1, 1)
+
+        self.groupBox_3 = QGroupBox(self.dashboard_page)
+        self.groupBox_3.setObjectName(u"groupBox_3")
+
+        self.gridLayout_2.addWidget(self.groupBox_3, 1, 0, 1, 2)
+
+        self.stackedWidget.addWidget(self.dashboard_page)
+        self.logs_page = QWidget()
+        self.logs_page.setObjectName(u"logs_page")
+        self.verticalLayout_6 = QVBoxLayout(self.logs_page)
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.logsTableView = QTableView(self.logs_page)
+        self.logsTableView.setObjectName(u"logsTableView")
+
+        self.verticalLayout_6.addWidget(self.logsTableView)
+
+        self.stackedWidget.addWidget(self.logs_page)
+        self.configuration_page = QWidget()
+        self.configuration_page.setObjectName(u"configuration_page")
+        self.label_7 = QLabel(self.configuration_page)
+        self.label_7.setObjectName(u"label_7")
+        self.label_7.setGeometry(QRect(280, 280, 241, 41))
+        font1 = QFont()
+        font1.setFamilies([u"Roboto"])
+        font1.setPointSize(20)
+        self.label_7.setFont(font1)
+        self.stackedWidget.addWidget(self.configuration_page)
+        self.alerts_page = QWidget()
+        self.alerts_page.setObjectName(u"alerts_page")
+        self.verticalLayout_7 = QVBoxLayout(self.alerts_page)
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.alertsTableView = QTableView(self.alerts_page)
+        self.alertsTableView.setObjectName(u"alertsTableView")
+
+        self.verticalLayout_7.addWidget(self.alertsTableView)
+
+        self.stackedWidget.addWidget(self.alerts_page)
+
+        self.verticalLayout_5.addWidget(self.stackedWidget)
+
+
+        self.gridLayout.addWidget(self.main_dashboard, 0, 2, 1, 1)
+
         self.icon_widget = QWidget(self.centralwidget)
         self.icon_widget.setObjectName(u"icon_widget")
         self.icon_widget.setStyleSheet(u"QWidget{\n"
@@ -70,8 +191,8 @@ class Ui_MainWindow(object):
         self.verticalLayout.setContentsMargins(-1, 15, -1, -1)
         self.dashboard_1 = QPushButton(self.icon_widget)
         self.dashboard_1.setObjectName(u"dashboard_1")
-        icon = QIcon(QIcon.fromTheme(u"go-home"))
-        self.dashboard_1.setIcon(icon)
+        icon2 = QIcon(QIcon.fromTheme(u"go-home"))
+        self.dashboard_1.setIcon(icon2)
         self.dashboard_1.setCheckable(True)
         self.dashboard_1.setAutoExclusive(True)
 
@@ -79,8 +200,8 @@ class Ui_MainWindow(object):
 
         self.alerts_1 = QPushButton(self.icon_widget)
         self.alerts_1.setObjectName(u"alerts_1")
-        icon1 = QIcon(QIcon.fromTheme(u"dialog-warning"))
-        self.alerts_1.setIcon(icon1)
+        icon3 = QIcon(QIcon.fromTheme(u"dialog-warning"))
+        self.alerts_1.setIcon(icon3)
         self.alerts_1.setCheckable(True)
         self.alerts_1.setAutoExclusive(True)
 
@@ -88,8 +209,8 @@ class Ui_MainWindow(object):
 
         self.logs_1 = QPushButton(self.icon_widget)
         self.logs_1.setObjectName(u"logs_1")
-        icon2 = QIcon(QIcon.fromTheme(u"accessories-dictionary"))
-        self.logs_1.setIcon(icon2)
+        icon4 = QIcon(QIcon.fromTheme(u"accessories-dictionary"))
+        self.logs_1.setIcon(icon4)
         self.logs_1.setCheckable(True)
         self.logs_1.setAutoExclusive(True)
 
@@ -97,8 +218,8 @@ class Ui_MainWindow(object):
 
         self.configuration_1 = QPushButton(self.icon_widget)
         self.configuration_1.setObjectName(u"configuration_1")
-        icon3 = QIcon(QIcon.fromTheme(u"document-properties"))
-        self.configuration_1.setIcon(icon3)
+        icon5 = QIcon(QIcon.fromTheme(u"document-properties"))
+        self.configuration_1.setIcon(icon5)
         self.configuration_1.setCheckable(True)
         self.configuration_1.setAutoExclusive(True)
 
@@ -113,8 +234,8 @@ class Ui_MainWindow(object):
 
         self.pushButton_6 = QPushButton(self.icon_widget)
         self.pushButton_6.setObjectName(u"pushButton_6")
-        icon4 = QIcon(QIcon.fromTheme(u"system-shutdown"))
-        self.pushButton_6.setIcon(icon4)
+        icon6 = QIcon(QIcon.fromTheme(u"system-shutdown"))
+        self.pushButton_6.setIcon(icon6)
         self.pushButton_6.setCheckable(True)
 
         self.verticalLayout_3.addWidget(self.pushButton_6)
@@ -160,11 +281,11 @@ class Ui_MainWindow(object):
 
         self.label_3 = QLabel(self.icon_name_widget)
         self.label_3.setObjectName(u"label_3")
-        font = QFont()
-        font.setFamilies([u"Roboto"])
-        font.setPointSize(12)
-        font.setBold(True)
-        self.label_3.setFont(font)
+        font2 = QFont()
+        font2.setFamilies([u"Roboto"])
+        font2.setPointSize(12)
+        font2.setBold(True)
+        self.label_3.setFont(font2)
 
         self.horizontalLayout_2.addWidget(self.label_3)
 
@@ -177,7 +298,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setContentsMargins(-1, 15, -1, -1)
         self.dashboard_2 = QPushButton(self.icon_name_widget)
         self.dashboard_2.setObjectName(u"dashboard_2")
-        self.dashboard_2.setIcon(icon)
+        self.dashboard_2.setIcon(icon2)
         self.dashboard_2.setCheckable(True)
         self.dashboard_2.setAutoExclusive(True)
 
@@ -185,7 +306,7 @@ class Ui_MainWindow(object):
 
         self.alerts_2 = QPushButton(self.icon_name_widget)
         self.alerts_2.setObjectName(u"alerts_2")
-        self.alerts_2.setIcon(icon1)
+        self.alerts_2.setIcon(icon3)
         self.alerts_2.setCheckable(True)
         self.alerts_2.setAutoExclusive(True)
 
@@ -193,7 +314,7 @@ class Ui_MainWindow(object):
 
         self.logs_2 = QPushButton(self.icon_name_widget)
         self.logs_2.setObjectName(u"logs_2")
-        self.logs_2.setIcon(icon2)
+        self.logs_2.setIcon(icon4)
         self.logs_2.setCheckable(True)
         self.logs_2.setAutoExclusive(True)
 
@@ -201,7 +322,7 @@ class Ui_MainWindow(object):
 
         self.configuration_2 = QPushButton(self.icon_name_widget)
         self.configuration_2.setObjectName(u"configuration_2")
-        self.configuration_2.setIcon(icon3)
+        self.configuration_2.setIcon(icon5)
         self.configuration_2.setCheckable(True)
         self.configuration_2.setAutoExclusive(True)
 
@@ -216,99 +337,13 @@ class Ui_MainWindow(object):
 
         self.pushButton_12 = QPushButton(self.icon_name_widget)
         self.pushButton_12.setObjectName(u"pushButton_12")
-        self.pushButton_12.setIcon(icon4)
+        self.pushButton_12.setIcon(icon6)
         self.pushButton_12.setCheckable(True)
 
         self.verticalLayout_4.addWidget(self.pushButton_12)
 
 
         self.gridLayout.addWidget(self.icon_name_widget, 0, 1, 1, 1)
-
-        self.main_dashboard = QWidget(self.centralwidget)
-        self.main_dashboard.setObjectName(u"main_dashboard")
-        self.verticalLayout_5 = QVBoxLayout(self.main_dashboard)
-        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
-        self.header_widget = QWidget(self.main_dashboard)
-        self.header_widget.setObjectName(u"header_widget")
-        self.horizontalLayout_3 = QHBoxLayout(self.header_widget)
-        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.menu = QPushButton(self.header_widget)
-        self.menu.setObjectName(u"menu")
-        self.menu.setMinimumSize(QSize(0, 0))
-        self.menu.setStyleSheet(u"border:none;")
-        icon5 = QIcon()
-        icon5.addFile(u":/images/dropdownicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.menu.setIcon(icon5)
-        self.menu.setIconSize(QSize(20, 20))
-        self.menu.setCheckable(True)
-
-        self.horizontalLayout_3.addWidget(self.menu)
-
-        self.horizontalSpacer = QSpacerItem(266, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_3.addItem(self.horizontalSpacer)
-
-        self.label_2 = QLabel(self.header_widget)
-        self.label_2.setObjectName(u"label_2")
-
-        self.horizontalLayout_3.addWidget(self.label_2)
-
-        self.horizontalSpacer_2 = QSpacerItem(266, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.horizontalLayout_3.addItem(self.horizontalSpacer_2)
-
-        self.pushButton_15 = QPushButton(self.header_widget)
-        self.pushButton_15.setObjectName(u"pushButton_15")
-        self.pushButton_15.setStyleSheet(u"border:none;")
-        icon6 = QIcon()
-        icon6.addFile(u":/images/settingsicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.pushButton_15.setIcon(icon6)
-        self.pushButton_15.setIconSize(QSize(20, 20))
-
-        self.horizontalLayout_3.addWidget(self.pushButton_15)
-
-
-        self.verticalLayout_5.addWidget(self.header_widget)
-
-        self.stackedWidget = QStackedWidget(self.main_dashboard)
-        self.stackedWidget.setObjectName(u"stackedWidget")
-        self.stackedWidget.setStyleSheet(u"background-color: rgb(255, 255, 255);")
-        self.dashboard_page = QWidget()
-        self.dashboard_page.setObjectName(u"dashboard_page")
-        self.label_4 = QLabel(self.dashboard_page)
-        self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(330, 170, 241, 41))
-        font1 = QFont()
-        font1.setFamilies([u"Roboto"])
-        font1.setPointSize(20)
-        self.label_4.setFont(font1)
-        self.stackedWidget.addWidget(self.dashboard_page)
-        self.logs_page = QWidget()
-        self.logs_page.setObjectName(u"logs_page")
-        self.label_5 = QLabel(self.logs_page)
-        self.label_5.setObjectName(u"label_5")
-        self.label_5.setGeometry(QRect(330, 220, 241, 41))
-        self.label_5.setFont(font1)
-        self.stackedWidget.addWidget(self.logs_page)
-        self.configuration_page = QWidget()
-        self.configuration_page.setObjectName(u"configuration_page")
-        self.label_7 = QLabel(self.configuration_page)
-        self.label_7.setObjectName(u"label_7")
-        self.label_7.setGeometry(QRect(280, 280, 241, 41))
-        self.label_7.setFont(font1)
-        self.stackedWidget.addWidget(self.configuration_page)
-        self.alerts_page = QWidget()
-        self.alerts_page.setObjectName(u"alerts_page")
-        self.label_6 = QLabel(self.alerts_page)
-        self.label_6.setObjectName(u"label_6")
-        self.label_6.setGeometry(QRect(420, 220, 241, 41))
-        self.label_6.setFont(font1)
-        self.stackedWidget.addWidget(self.alerts_page)
-
-        self.verticalLayout_5.addWidget(self.stackedWidget)
-
-
-        self.gridLayout.addWidget(self.main_dashboard, 0, 2, 1, 1)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -326,11 +361,22 @@ class Ui_MainWindow(object):
         self.pushButton_6.toggled.connect(MainWindow.close)
         self.pushButton_12.toggled.connect(MainWindow.close)
 
+        self.stackedWidget.setCurrentIndex(0)
+
+
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        self.menu.setText("")
+        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Michigan Intrusion Detection System", None))
+        self.pushButton_15.setText("")
+        self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Threat Distribution", None))
+        self.chartLabel.setText("")
+        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Live Alert Feed", None))
+        self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Recent Events", None))
+        self.label_7.setText(QCoreApplication.translate("MainWindow", u"Configuration Page", None))
         self.sidebar_logo.setText("")
         self.dashboard_1.setText("")
         self.alerts_1.setText("")
@@ -344,12 +390,5 @@ class Ui_MainWindow(object):
         self.logs_2.setText(QCoreApplication.translate("MainWindow", u"Logs", None))
         self.configuration_2.setText(QCoreApplication.translate("MainWindow", u"Configuration", None))
         self.pushButton_12.setText(QCoreApplication.translate("MainWindow", u"Sign Out", None))
-        self.menu.setText("")
-        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Michigan Intrusion Detection System", None))
-        self.pushButton_15.setText("")
-        self.label_4.setText(QCoreApplication.translate("MainWindow", u"Dashboard Page", None))
-        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Logs Page", None))
-        self.label_7.setText(QCoreApplication.translate("MainWindow", u"Configuration Page", None))
-        self.label_6.setText(QCoreApplication.translate("MainWindow", u"Alerts Page", None))
     # retranslateUi
 
