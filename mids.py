@@ -1,19 +1,27 @@
 from dashboard import Ui_MainWindow
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QHeaderView
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtGui import QColor, QIcon, QPixmap
 from templates.logs_template import logsTemplate
 from templates.alerts_template import alertsTemplate
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QProcess
 class MySideBar(QMainWindow, Ui_MainWindow):
     def __init__(self, username = "Default_Admin"):
         super().__init__()
         self.setupUi(self)
+        
+        self.process = QProcess(self)
+        self.process.finished.connect(self.on_process_finished)
+        self.rule_engine_process = QProcess(self)
+        self.rule_engine.finished.connect(self.on_process_finished)
+        
         if hasattr(self, 'user_label'):
             self.user_label.setText(f"{username}")
         self.setWindowTitle("Michigan Intrusion Detection System")
         self.setWindowIcon(QIcon("images/midslogonobg.png"))
         
         self.icon_name_widget.setHidden(True)
+        
+        self.startMidsButton.toggled.connect(self.button_toggle)
         
         lHeader = self.logsTableView.horizontalHeader()
         lHeader.setSectionResizeMode(QHeaderView.Stretch)
@@ -45,8 +53,22 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         
         self.alertsWidget = alertsTemplate()
         self.alertsTableView.setModel(self.alertsWidget)
+      
+    def on_process_finished(self):
+        if self.process.state() == QProcess.NotRunning and self.rule_engine.state() == QProcess.NotRunning:
+            self.startMidsButton.setChecked(False)
+            self.startMidsButton.setText("Start")
         
-        
+    def button_toggle(self, checked):
+        if checked:
+            self.process.start("python", ["collector.py"])
+            self.rule_engine_process.start("python", ["rule_engine.py"])
+            self.startMidsButton.setText("Stop")
+        else:
+            self.process.terminate()
+            self.rule_engine_process.terminate()
+            self.startMidsButton.setText("Start")
+             
         
     def switch_to_dashboardPage(self):
         self.stackedWidget.setCurrentIndex(0)
