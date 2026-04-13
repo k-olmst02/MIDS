@@ -9,10 +9,10 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         
-        self.process = QProcess(self)
-        self.process.finished.connect(self.on_process_finished)
-        self.rule_engine_process = QProcess(self)
-        self.rule_engine.finished.connect(self.on_process_finished)
+        #self.process = QProcess(self)
+        #self.process.finished.connect(self.on_process_finished)
+        #self.rule_engine_process = QProcess(self)
+        #self.rule_engine_process.finished.connect(self.on_process_finished)
         
         if hasattr(self, 'user_label'):
             self.user_label.setText(f"{username}")
@@ -21,7 +21,7 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         
         self.icon_name_widget.setHidden(True)
         
-        self.startMidsButton.toggled.connect(self.button_toggle)
+        #self.startMidsButton.toggled.connect(self.button_toggle)
         
         lHeader = self.logsTableView.horizontalHeader()
         lHeader.setSectionResizeMode(QHeaderView.Stretch)
@@ -29,8 +29,8 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         aHeader = self.alertsTableView.horizontalHeader()
         aHeader.setSectionResizeMode(QHeaderView.Stretch)
         
-        self.alerts_db_path = "/var/lib/hids_collector/alerts.db"
-        self.db_path = "/var/lib/hids_collector/logs.db"
+        self.alerts_db_path = "alerts.db"
+        self.db_path = "logs.db"
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.auto_update)
@@ -54,20 +54,22 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.alertsWidget = alertsTemplate()
         self.alertsTableView.setModel(self.alertsWidget)
       
-    def on_process_finished(self):
-        if self.process.state() == QProcess.NotRunning and self.rule_engine.state() == QProcess.NotRunning:
-            self.startMidsButton.setChecked(False)
-            self.startMidsButton.setText("Start")
+    #def on_process_finished(self):
+        #if self.process.state() == QProcess.NotRunning and self.rule_engine_process.state() == QProcess.NotRunning:
+            #self.startMidsButton.setChecked(False)
+            #self.startMidsButton.setText("Start")
         
-    def button_toggle(self, checked):
-        if checked:
-            self.process.start("python", ["collector.py"])
-            self.rule_engine_process.start("python", ["rule_engine.py"])
-            self.startMidsButton.setText("Stop")
-        else:
-            self.process.terminate()
-            self.rule_engine_process.terminate()
-            self.startMidsButton.setText("Start")
+    #def button_toggle(self, checked):
+        #if checked:
+            #self.process.start("python", ["Collector.py"])
+            #self.process.setProcessChannelMode(QProcess.ForwardedChannels) 
+            #if not self.process.waitForStarted():
+                    #print("Failed to start process:", self.process.errorString())
+            #self.rule_engine_process.start("python", ["rule_engine.py"])
+        #else:
+            #self.process.terminate()
+            #self.rule_engine_process.terminate()
+            
              
         
     def switch_to_dashboardPage(self):
