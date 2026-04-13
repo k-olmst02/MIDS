@@ -14,11 +14,11 @@ import sqlite3
 import time
 
 if os.name == 'nt':
-    STATE_DIR = "."
+    STATE_DIR = "auditlogs"
     AUDIT_LOG = "auditlogs/audit.log"
 else:
     AUDIT_LOG = "/var/log/audit/audit.log"
-    STATE_DIR = "/var/lib/hids_collector"
+    STATE_DIR = "auditlogs"
 
 OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
 DB_PATH = os.path.join(STATE_DIR, "logs.db")

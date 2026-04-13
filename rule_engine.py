@@ -11,14 +11,11 @@ import time
 import json
 from datetime import datetime
 
-if os.name == 'nt':
-    DB_PATH = "logs.db"
-    ALERTS_DB_PATH = "alerts.db"
-    STATE_FILE = "auditlogs/rule_engine_state.json"
-else:
-    DB_PATH = "/var/lib/hids_collector/logs.db"
-    ALERTS_DB_PATH = "/var/lib/hids_collector/alerts.db"
-    STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
+
+DB_PATH = "logs.db"
+ALERTS_DB_PATH = "alerts.db"
+STATE_FILE = "auditlogs/rule_engine_state.json"
+
 
 CHECK_INTERVAL = 5
 
