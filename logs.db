@@ -1,0 +1,59 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  event_type TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  source TEXT,
+  message TEXT
+);
+
+CREATE TABLE IF NOT EXISTS processes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  pid INTEGER NOT NULL,
+  ppid INTEGER,
+  username TEXT,
+  command TEXT,
+  hash TEXT
+);
+
+CREATE TABLE IF NOT EXISTS file_integrity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  path TEXT NOT NULL,
+  action TEXT NOT NULL,
+  old_hash TEXT,
+  new_hash TEXT
+);
+
+CREATE TABLE IF NOT EXISTS network_activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  local_address TEXT,
+  remote_address TEXT,
+  pid INTEGER,
+  process_name TEXT
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  severity TEXT NOT NULL,
+  category TEXT,
+  description TEXT NOT NULL,
+  related_pid INTEGER,
+  related_file TEXT,
+  related_network TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_time ON events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);
+CREATE INDEX IF NOT EXISTS idx_processes_pid ON processes(pid);
+CREATE INDEX IF NOT EXISTS idx_file_path ON file_integrity(path);
+CREATE INDEX IF NOT EXISTS idx_net_time ON network_activity(timestamp);
+CREATE INDEX IF NOT EXISTS idx_net_remote ON network_activity(remote_address);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_network_dedup ON network_activity(local_address, remote_address, pid);
+CREATE INDEX IF NOT EXISTS idx_alerts_time ON alerts(timestamp);
+CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
