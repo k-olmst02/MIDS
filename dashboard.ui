@@ -44,6 +44,9 @@
               <height>0</height>
              </size>
             </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
             <property name="styleSheet">
              <string notr="true">border:none;</string>
             </property>
@@ -105,7 +108,43 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="startMidsButton">
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="mouseTracking">
+             <bool>false</bool>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::FocusPolicy::StrongFocus</enum>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border:none;</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset>
+              <normaloff>images/rsjej5atftjgrf35hrt2iam5b6-ed3e8950b4d6aaea6266056b674605a0.png</normaloff>
+              <normalon>images/pause-button-outline-red-icon.webp</normalon>images/rsjej5atftjgrf35hrt2iam5b6-ed3e8950b4d6aaea6266056b674605a0.png</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>27</width>
+              <height>27</height>
+             </size>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pushButton_15">
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
             <property name="styleSheet">
              <string notr="true">border:none;</string>
             </property>
@@ -281,6 +320,9 @@ QPushButton:checked{
          </property>
          <item>
           <widget class="QPushButton" name="dashboard_1">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -297,6 +339,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="alerts_1">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -313,6 +358,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="logs_1">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -329,6 +377,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="configuration_1">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -360,6 +411,9 @@ QPushButton:checked{
        </item>
        <item>
         <widget class="QPushButton" name="pushButton_6">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -457,6 +511,9 @@ QPushButton:checked{
          </property>
          <item>
           <widget class="QPushButton" name="dashboard_2">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string>Dashboard</string>
            </property>
@@ -473,6 +530,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="alerts_2">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string>Alerts</string>
            </property>
@@ -489,6 +549,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="logs_2">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string>Logs</string>
            </property>
@@ -505,6 +568,9 @@ QPushButton:checked{
          </item>
          <item>
           <widget class="QPushButton" name="configuration_2">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
            <property name="text">
             <string>Configuration</string>
            </property>
@@ -536,6 +602,9 @@ QPushButton:checked{
        </item>
        <item>
         <widget class="QPushButton" name="pushButton_12">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
          <property name="text">
           <string>Sign Out</string>
          </property>
