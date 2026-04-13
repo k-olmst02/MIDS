@@ -13,8 +13,13 @@ import re
 import sqlite3
 import time
 
-AUDIT_LOG = "/var/log/audit/audit.log"
-STATE_DIR = "/var/lib/hids_collector"
+if os.name == 'nt':
+    STATE_DIR = "."
+    AUDIT_LOG = "auditlogs/audit.log"
+else:
+    AUDIT_LOG = "/var/log/audit/audit.log"
+    STATE_DIR = "/var/lib/hids_collector"
+
 OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
 DB_PATH = os.path.join(STATE_DIR, "logs.db")
 SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10

@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
 import os
-import pwd
+import getpass
+try:
+    import pwd
+except ImportError:
+    current_user = getpass.getuser()
 import sqlite3
 import stat
 import time
 import json
 from datetime import datetime
 
-DB_PATH = "/var/lib/hids_collector/logs.db"
-ALERTS_DB_PATH = "/var/lib/hids_collector/alerts.db"
-STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
+if os.name == 'nt':
+    DB_PATH = "logs.db"
+    ALERTS_DB_PATH = "alerts.db"
+    STATE_FILE = "auditlogs/rule_engine_state.json"
+else:
+    DB_PATH = "/var/lib/hids_collector/logs.db"
+    ALERTS_DB_PATH = "/var/lib/hids_collector/alerts.db"
+    STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
+
 CHECK_INTERVAL = 5
 
 # Rule Thresholds
@@ -273,7 +283,12 @@ def check_db_permissions(logs_conn, alerts_conn):
         return
 
     st = os.stat(DB_PATH)
-    owner = pwd.getpwuid(st.st_uid).pw_name
+    try:
+        import pwd
+        owner = pwd.getpwuid(st.st_uid).pw_name
+    except (ImportError, NameError, Exception):
+        owner = str(st.st_uid)
+    
     mode = stat.S_IMODE(st.st_mode)
 
     if owner != AUTHORIZED_DB_USER:
