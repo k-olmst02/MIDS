@@ -183,27 +183,23 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_9">
               <item>
-               <widget class="QLabel" name="chartLabel">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
+               <widget class="QWidget" name="attackChart" native="true"/>
               </item>
              </layout>
             </widget>
            </item>
            <item row="0" column="0">
-            <widget class="QGroupBox" name="groupBox">
+            <widget class="QGroupBox" name="datContainer">
              <property name="title">
               <string>Live Alert Feed</string>
              </property>
-             <widget class="QTableView" name="dashboardAlertTable">
+             <widget class="QTableView" name="dashboardAlertsTable">
               <property name="geometry">
                <rect>
                 <x>11</x>
                 <y>27</y>
-                <width>256</width>
-                <height>192</height>
+                <width>381</width>
+                <height>291</height>
                </rect>
               </property>
               <property name="autoFillBackground">
@@ -213,10 +209,20 @@
             </widget>
            </item>
            <item row="1" column="0" colspan="2">
-            <widget class="QGroupBox" name="groupBox_3">
+            <widget class="QGroupBox" name="recentEvents">
              <property name="title">
               <string>Recent Events</string>
              </property>
+             <widget class="QTableView" name="recentEventsTable">
+              <property name="geometry">
+               <rect>
+                <x>100</x>
+                <y>60</y>
+                <width>256</width>
+                <height>192</height>
+               </rect>
+              </property>
+             </widget>
             </widget>
            </item>
           </layout>
