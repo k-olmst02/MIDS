@@ -23,7 +23,7 @@ else:
     STATE_DIR = os.path.join(BASE_DIR, "hids_collector")
 
 OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
-DB_PATH = os.path.join(STATE_DIR, "logs.db")
+DB_PATH = "logs.db"
 SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10
 
 TYPE_RE = re.compile(r"^type=([A-Z_]+)\s")
