@@ -6,3 +6,4 @@ logininfo.db
 auditlogs/logs.db
 alerts.db
 logs.db
+auditlogs/

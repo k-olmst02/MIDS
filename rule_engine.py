@@ -12,9 +12,9 @@ import json
 from datetime import datetime
 
 
-DB_PATH = "auditlogs/logs.db"
+DB_PATH = "logs.db"
 ALERTS_DB_PATH = "alerts.db"
-STATE_FILE = "auditlogs/rule_engine_state.json"
+STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
 
 
 CHECK_INTERVAL = 5

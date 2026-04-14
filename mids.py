@@ -47,7 +47,7 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.startMidsButton.toggled.connect(self.button_toggle)
         
         self.alerts_db_path = "alerts.db"
-        self.db_path = "auditlogs/logs.db"
+        self.db_path = "logs.db"
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.auto_update)
