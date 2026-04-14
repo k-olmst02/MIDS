@@ -3,22 +3,15 @@ import os
 
 def initialize_database():
     db_name = "logs.db"
-    
-    # Optional: Logic to handle your specific MIDS folder structure
-    # if os.name != 'nt':  # If on Linux/EC2
-    #     db_name = "/var/lib/hids_collector/logs.db"
 
     print(f"Initializing database: {db_name}...")
 
     try:
-        # Connect to the database (creates it if it doesn't exist)
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
 
-        # 1. Enable Foreign Keys
         cursor.execute("PRAGMA foreign_keys = ON;")
 
-        # 2. Create Events Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +23,6 @@ def initialize_database():
         );
         """)
 
-        # 3. Create Processes Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS processes (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +35,6 @@ def initialize_database():
         );
         """)
 
-        # 4. Create File Integrity Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS file_integrity (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +46,6 @@ def initialize_database():
         );
         """)
 
-        # 5. Create Network Activity Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS network_activity (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +57,6 @@ def initialize_database():
         );
         """)
 
-        # 6. Create Alerts Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS alerts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +70,6 @@ def initialize_database():
         );
         """)
 
-        # 7. Create Indexes for Performance
         print("Creating indexes...")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_time ON events(timestamp);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);")

@@ -11,11 +11,12 @@ import time
 import json
 from datetime import datetime
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DB_PATH = "logs.db"
 ALERTS_DB_PATH = "alerts.db"
-STATE_FILE = "/var/lib/hids_collector/rule_engine_state.json"
 
+STATE_FILE = os.path.join(BASE_DIR, "hids_collector/rule_engine_state.json")
 
 CHECK_INTERVAL = 5
 
