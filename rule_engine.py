@@ -5,7 +5,8 @@ import sqlite3
 import stat
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 
 DB_PATH = "/var/lib/hids_collector/logs.db"
 ALERTS_DB_PATH = "/var/lib/hids_collector/alerts.db"
@@ -36,12 +37,19 @@ CRITICAL_FILES = [
 ]
 
 # Authorized Users
-AUTHORIZED_DB_USER = "ec2-user"
+AUTHORIZED_DB_USER = "mids"
 EXPECTED_DB_MODE = 0o640
 
 # Suspicious Ports
 SUSPICIOUS_PORTS = [4444, 5555, 6666, 8888, 9999]
 
+def get_est_timestamp():
+    est = pytz.timezone("US/Eastern")
+    return datetime.now(est).strftime("%m/%d/%Y %H:%M:%S")
+
+def get_past_time(seconds):
+    est = pytz.timezone("US/Eastern")
+    return (datetime.now(est) - timedelta(seconds=seconds)).strftime("%m/%d/%Y %H:%M:%S")
 
 def connect_db():
     """Connect to the logs database."""
@@ -84,7 +92,7 @@ def create_alert(alerts_conn, rule_name, severity, description, event_ref=None):
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
-            datetime.utcnow().isoformat(),
+            get_est_timestamp(),
             rule_name,
             severity,
             "rules_engine",
