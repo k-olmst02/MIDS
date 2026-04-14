@@ -12,7 +12,7 @@ import json
 from datetime import datetime
 
 
-DB_PATH = "logs.db"
+DB_PATH = "auditlogs/logs.db"
 ALERTS_DB_PATH = "alerts.db"
 STATE_FILE = "auditlogs/rule_engine_state.json"
 
