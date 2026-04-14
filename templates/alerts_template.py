@@ -26,7 +26,7 @@ class alertsTemplate(QAbstractTableModel):
             if severity in ['critical', 'high']:
                 return QColor(Qt.red)
             if severity in ['medium']:
-                return QColor(Qt.purple)
+                return QColor(255, 165, 0)
         return None
             
     def headerData(self, section, orientation, role):

@@ -26,7 +26,7 @@ class logsTemplate(QAbstractTableModel):
             if value in ['critical', 'alert', 'error', 'unlink']:
                 return QColor(Qt.red)
             if value in ['warning', 'chmod', 'rename']:
-                return QColor(Qt.yellow)
+                return QColor(255, 165, 0)
             
     def headerData(self, section, orientation, role):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
