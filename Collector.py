@@ -84,7 +84,7 @@ class Collector:
     #Setup collector state
     def __init__(self):
         os.makedirs(STATE_DIR, exist_ok=True)
-        self.conn = sqlite3.connect(f"file:{DB_PATH}?mode=rwc", uri=True)
+        self.conn = sqlite3.connect(f"file:{DB_PATH}?mode=rw", uri=True)
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         need = {"events", "processes", "file_integrity", "network_activity"}
