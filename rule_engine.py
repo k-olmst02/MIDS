@@ -9,8 +9,7 @@ import sqlite3
 import stat
 import time
 import json
-from datetime import datetime, timedelta
-import pytz
+from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,14 +49,6 @@ EXPECTED_DB_MODE = 0o666
 
 # Suspicious Ports
 SUSPICIOUS_PORTS = [4444, 5555, 6666, 8888, 9999]
-
-def get_est_timestamp():
-    est = pytz.timezone("US/Eastern")
-    return datetime.now(est).strftime("%m/%d/%Y %H:%M:%S")
-
-def get_past_time(seconds):
-    est = pytz.timezone("US/Eastern")
-    return (datetime.now(est) - timedelta(seconds=seconds)).strftime("%m/%d/%Y %H:%M:%S")
 
 
 def connect_db():
@@ -101,7 +92,7 @@ def create_alert(alerts_conn, rule_name, severity, description, event_ref=None):
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
-            get_est_timestamp(),
+            datetime.utcnow().isoformat(),
             rule_name,
             severity,
             "rules_engine",
