@@ -51,6 +51,8 @@ EXPECTED_DB_MODE = 0o666
 # Suspicious Ports
 SUSPICIOUS_PORTS = [4444, 5555, 6666, 8888, 9999]
 
+def get_eastern_timestamp():
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%m/%d/%Y %I:%M:%S %p")
 
 def connect_db():
     """Connect to the logs database."""
