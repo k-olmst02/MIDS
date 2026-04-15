@@ -6,11 +6,38 @@ from templates.alerts_template import alertsTemplate
 from PySide6.QtCore import QTimer, QProcess, Qt, QMargins
 from PySide6.QtCharts import QChart, QChartView, QBarSet, QBarSeries, QBarCategoryAxis, QValueAxis
 import sqlite3
+import io
+import json
+import os
+import time
 
 class MySideBar(QMainWindow, Ui_MainWindow):
     def __init__(self, username = "Default_Admin"):
         super().__init__()
         self.setupUi(self)
+
+        # #region agent log
+        self._dbg_run_id = os.environ.get("MIDS_DEBUG_RUN_ID", "pre-fix")
+        def _dbg_write(payload: dict):
+            try:
+                payload.setdefault("sessionId", "173715")
+                payload.setdefault("timestamp", int(time.time() * 1000))
+                with io.open("debug-173715.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            except Exception:
+                pass
+        self._dbg_write = _dbg_write
+        self._dbg_write({
+            "runId": self._dbg_run_id,
+            "hypothesisId": "Q1",
+            "location": "mids.py:__init__",
+            "message": "GUI init",
+            "data": {},
+        })
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(lambda: self._stop_subprocesses("aboutToQuit"))
+        # #endregion
         
         main_layout = self.dashboard_page.layout()
         if main_layout:
@@ -28,6 +55,31 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.process.finished.connect(self.on_process_finished)
         self.rule_engine_process = QProcess(self)
         self.rule_engine_process.finished.connect(self.on_process_finished)
+
+        # #region agent log
+        for name, proc in [("collector", self.process), ("rule_engine", self.rule_engine_process)]:
+            proc.started.connect(lambda n=name: self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q1",
+                "location": "mids.py:QProcess",
+                "message": "process started",
+                "data": {"name": n},
+            }))
+            proc.errorOccurred.connect(lambda err, n=name: self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q2",
+                "location": "mids.py:QProcess",
+                "message": "process error",
+                "data": {"name": n, "error": int(err)},
+            }))
+            proc.finished.connect(lambda code, status, n=name: self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q1",
+                "location": "mids.py:QProcess",
+                "message": "process finished",
+                "data": {"name": n, "exitCode": int(code), "exitStatus": int(status)},
+            }))
+        # #endregion
         
         if hasattr(self, 'user_label'):
             self.user_label.setText(f"{username}")
@@ -103,20 +155,80 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.dashboardAlertsTable.setColumnHidden(1, True)
         self.dashboardAlertsTable.setColumnHidden(4, True)
       
-    def on_process_finished(self):
+    def on_process_finished(self, *args):
         if self.process.state() == QProcess.NotRunning and self.rule_engine_process.state() == QProcess.NotRunning:
             self.startMidsButton.setChecked(False)
+
+    # #region agent log
+    def _stop_subprocesses(self, reason: str):
+        self._dbg_write({
+            "runId": self._dbg_run_id,
+            "hypothesisId": "Q1",
+            "location": "mids.py:_stop_subprocesses",
+            "message": "stopping subprocesses",
+            "data": {
+                "reason": reason,
+                "collector_state": int(self.process.state()),
+                "rule_engine_state": int(self.rule_engine_process.state()),
+            },
+        })
+        for name, proc in [("collector", self.process), ("rule_engine", self.rule_engine_process)]:
+            if proc.state() != QProcess.NotRunning:
+                proc.terminate()
+                proc.waitForFinished(2000)
+                if proc.state() != QProcess.NotRunning:
+                    proc.kill()
+                    proc.waitForFinished(2000)
+            self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q1",
+                "location": "mids.py:_stop_subprocesses",
+                "message": "subprocess stopped state",
+                "data": {"name": name, "state": int(proc.state())},
+            })
+    # #endregion
+
+    def closeEvent(self, event):
+        self._stop_subprocesses("closeEvent")
+        super().closeEvent(event)
         
     def button_toggle(self, checked):
         if checked:
+            # #region agent log
+            self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q3",
+                "location": "mids.py:button_toggle",
+                "message": "start requested",
+                "data": {},
+            })
+            # #endregion
+            self.process.setProcessChannelMode(QProcess.ForwardedChannels)
+            self.rule_engine_process.setProcessChannelMode(QProcess.ForwardedChannels)
             self.process.start("python", ["Collector.py"])
-            self.process.setProcessChannelMode(QProcess.ForwardedChannels) 
             if not self.process.waitForStarted():
                     print("Failed to start process:", self.process.errorString())
+                    # #region agent log
+                    self._dbg_write({
+                        "runId": self._dbg_run_id,
+                        "hypothesisId": "Q2",
+                        "location": "mids.py:button_toggle",
+                        "message": "collector failed to start",
+                        "data": {"error": self.process.errorString()},
+                    })
+                    # #endregion
             self.rule_engine_process.start("python", ["rule_engine.py"])
         else:
-            self.process.kill()
-            self.rule_engine_process.kill()
+            # #region agent log
+            self._dbg_write({
+                "runId": self._dbg_run_id,
+                "hypothesisId": "Q1",
+                "location": "mids.py:button_toggle",
+                "message": "stop requested",
+                "data": {},
+            })
+            # #endregion
+            self._stop_subprocesses("toggle_off")
             
              
         
