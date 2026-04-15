@@ -25,6 +25,7 @@ else:
 OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
 DB_PATH = "logs.db"
 SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10
+MAX_LINES_PER_CYCLE = 1000
 
 TYPE_RE = re.compile(r"^type=([A-Z_]+)\s")
 MSG_RE = re.compile(r"msg=audit\((\d+(?:\.\d+)?):(\d+)\):")
@@ -136,6 +137,9 @@ class Collector:
             if rot or shr:
                 self.off = 0
             self.fp.seek(self.off)
+            if self.off == 0:
+                self.fp.seek(0, 2)
+                self.off = self.fp.tell()
             logging.info("audit open inode=%s off=%s", self.ino, self.off)
         return True
 
@@ -257,17 +261,20 @@ class Collector:
             while True:
                 if self.open_log():
                     has_new = False
-                    while True:
-                        line = self.fp.readline()
-                        if not line:
-                            break
-                        has_new = True
-                        self.off = self.fp.tell()
-                        self.add_line(line)
-                    self.flush_buf(False)
-                    if has_new:
-                        self.conn.commit()
-                        self.save_off(False)
+                    lines_processed = 0
+                    while lines_processed < MAX_LINES_PER_CYCLE:
+                        while True:
+                            line = self.fp.readline()
+                            if not line:
+                                break
+                            has_new = True
+                            self.off = self.fp.tell()
+                            self.add_line(line)
+                            lines_processed += 1
+                        self.flush_buf(False)
+                        if has_new:
+                            self.conn.commit()
+                            self.save_off(False)
                 time.sleep(SLEEP)
         except KeyboardInterrupt:
             logging.info("collector stopping")
