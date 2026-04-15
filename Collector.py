@@ -12,6 +12,7 @@ except ImportError:
 import re
 import sqlite3
 import time
+from collections import Counter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,6 +36,18 @@ SYSCALL_NAME = {"59": "execve", "2": "open", "257": "open", "1": "write", "87": 
                 "43": "accept", "49": "bind"}
 FILE_ACTIONS, NET_ACTIONS = {"open", "write", "unlink", "rename", "chmod"}, {"connect", "accept", "bind"}
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+
+# #region agent log
+def _dbg_write(payload: dict):
+    try:
+        payload.setdefault("sessionId", "173715")
+        payload.setdefault("timestamp", int(time.time() * 1000))
+        with io.open("debug-173715.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# #endregion
 
 
 #Parse key values
@@ -103,6 +116,38 @@ class Collector:
         self.file_seen = {}
         self.proc_seen = {}
         self.last_save = 0.0
+
+        # #region agent log
+        self._dbg_run_id = os.environ.get("MIDS_DEBUG_RUN_ID", "pre-fix")
+        self._dbg_last = time.time()
+        self._dbg = {
+            "lines_total": 0,
+            "lines_kept": 0,
+            "drop_self_pid": 0,
+            "drop_type": Counter(),
+            "drop_syscall": Counter(),
+            "kept_type": Counter(),
+            "kept_syscall": Counter(),
+            "kept_comm": Counter(),
+            "kept_exe": Counter(),
+            "kept_path_prefix": Counter(),
+        }
+        _dbg_write({
+            "runId": self._dbg_run_id,
+            "hypothesisId": "A",
+            "location": "Collector.py:__init__",
+            "message": "collector init",
+            "data": {
+                "audit_log": AUDIT_LOG,
+                "state_dir": STATE_DIR,
+                "max_lines_per_cycle": MAX_LINES_PER_CYCLE,
+                "wait_s": WAIT,
+                "sleep_s": SLEEP,
+                "file_win_s": FILE_WIN,
+                "proc_win_s": PROC_WIN,
+            },
+        })
+        # #endregion
         try:
             with io.open(OFFSET_FILE, "r", encoding="utf-8") as f:
                 d = json.load(f)
@@ -212,13 +257,30 @@ class Collector:
 
     #Process audit line
     def add_line(self, line):
+        # #region agent log
+        self._dbg["lines_total"] += 1
+        # #endregion
         typ, _ts, serial = get_head(line)
         if f"pid={self.my_pid}" in line:
+            # #region agent log
+            self._dbg["drop_self_pid"] += 1
+            # #endregion
             return
         if typ in ["PROCTITLE", "CWD", "AVC"] or "syscall=0" in line or "syscall=89" in line:
+            # #region agent log
+            self._dbg["drop_type"][typ] += 1
+            if "syscall=0" in line:
+                self._dbg["drop_syscall"]["0"] += 1
+            if "syscall=89" in line:
+                self._dbg["drop_syscall"]["89"] += 1
+            # #endregion
             return
         if serial is None:
             self.put_evt(typ, line)
+            # #region agent log
+            self._dbg["lines_kept"] += 1
+            self._dbg["kept_type"][typ] += 1
+            # #endregion
             return
         ev = self.buf.get(serial)
         if ev is None:
@@ -233,15 +295,41 @@ class Collector:
                 get_sys(kv.get("syscall", "")), kv.get("pid", ""), kv.get("ppid", ""),
                 kv.get("uid", ""), kv.get("exe", ""), kv.get("comm", "")
             )
+            # #region agent log
+            self._dbg["lines_kept"] += 1
+            self._dbg["kept_type"][typ] += 1
+            if ev.get("syscall"):
+                self._dbg["kept_syscall"][ev["syscall"]] += 1
+            if ev.get("comm"):
+                self._dbg["kept_comm"][ev["comm"]] += 1
+            if ev.get("exe"):
+                self._dbg["kept_exe"][ev["exe"]] += 1
+            # #endregion
         elif typ == "EXECVE":
             argc = int(kv.get("argc", "0") or "0")
             ev["cmdline"] = " ".join(kv.get(f"a{i}", "") for i in range(argc) if kv.get(f"a{i}", ""))
+            # #region agent log
+            self._dbg["lines_kept"] += 1
+            self._dbg["kept_type"][typ] += 1
+            # #endregion
         elif typ == "PATH":
             if kv.get("name", ""):
                 ev["paths"].append(kv["name"])
+                # #region agent log
+                self._dbg["lines_kept"] += 1
+                self._dbg["kept_type"][typ] += 1
+                p = kv["name"]
+                pref = "/" + p.strip("/").split("/", 1)[0] if p.startswith("/") else (p.split("\\", 1)[0] if p else "")
+                if pref:
+                    self._dbg["kept_path_prefix"][pref] += 1
+                # #endregion
         elif typ == "SOCKADDR":
             if kv.get("saddr", ""):
                 ev["sockaddrs"].append(get_addr(kv["saddr"]))
+                # #region agent log
+                self._dbg["lines_kept"] += 1
+                self._dbg["kept_type"][typ] += 1
+                # #endregion
 
     #Flush pending groups
     def flush_buf(self, force=False):
@@ -275,6 +363,42 @@ class Collector:
                         if has_new:
                             self.conn.commit()
                             self.save_off(False)
+
+                # #region agent log
+                now = time.time()
+                if now - self._dbg_last >= 10:
+                    self._dbg_last = now
+                    _dbg_write({
+                        "runId": self._dbg_run_id,
+                        "hypothesisId": "B",
+                        "location": "Collector.py:run",
+                        "message": "volume summary (10s)",
+                        "data": {
+                            "lines_total": self._dbg["lines_total"],
+                            "lines_kept": self._dbg["lines_kept"],
+                            "drop_self_pid": self._dbg["drop_self_pid"],
+                            "drop_type_top": self._dbg["drop_type"].most_common(5),
+                            "drop_syscall_top": self._dbg["drop_syscall"].most_common(5),
+                            "kept_type_top": self._dbg["kept_type"].most_common(7),
+                            "kept_syscall_top": self._dbg["kept_syscall"].most_common(7),
+                            "kept_comm_top": self._dbg["kept_comm"].most_common(7),
+                            "kept_exe_top": self._dbg["kept_exe"].most_common(5),
+                            "kept_path_prefix_top": self._dbg["kept_path_prefix"].most_common(7),
+                            "buf_groups": len(self.buf),
+                        },
+                    })
+                    # reset window stats to keep logs small
+                    self._dbg["lines_total"] = 0
+                    self._dbg["lines_kept"] = 0
+                    self._dbg["drop_self_pid"] = 0
+                    self._dbg["drop_type"].clear()
+                    self._dbg["drop_syscall"].clear()
+                    self._dbg["kept_type"].clear()
+                    self._dbg["kept_syscall"].clear()
+                    self._dbg["kept_comm"].clear()
+                    self._dbg["kept_exe"].clear()
+                    self._dbg["kept_path_prefix"].clear()
+                # #endregion
                 time.sleep(SLEEP)
         except KeyboardInterrupt:
             logging.info("collector stopping")
