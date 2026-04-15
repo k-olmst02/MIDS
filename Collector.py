@@ -208,9 +208,7 @@ class Collector:
     #Process audit line
     def add_line(self, line):
         typ, _ts, serial = get_head(line)
-        if "syscall=1 " in line or "syscall=1\s" in line:
-            return
-        if typ == "PROCTITLE" in line:
+        if typ in ["PROCTITLE", "CWD", "PATH", "AVC"] or "syscall=1 " in line:
             return
         if serial is None:
             self.put_evt(typ, line)
