@@ -125,7 +125,7 @@ def alert_exists(alerts_conn, rule_name, event_ref):
 
 
 def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains=None):
-    """Return True if a similar alert was created recently."""
+    """Simple duplicate check for custom timestamp strings."""
     cur = alerts_conn.cursor()
 
     if description_contains:
@@ -135,10 +135,10 @@ def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains
             FROM alerts
             WHERE rule_name = ?
               AND description LIKE ?
-              AND timestamp >= datetime('now', ?)
+            ORDER BY id DESC
             LIMIT 1
             """,
-            (rule_name, f"%{description_contains}%", f"-{seconds} seconds"),
+            (rule_name, f"%{description_contains}%"),
         )
     else:
         cur.execute(
@@ -146,10 +146,10 @@ def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains
             SELECT 1
             FROM alerts
             WHERE rule_name = ?
-              AND timestamp >= datetime('now', ?)
+            ORDER BY id DESC
             LIMIT 1
             """,
-            (rule_name, f"-{seconds} seconds"),
+            (rule_name,),
         )
 
     return cur.fetchone() is not None
