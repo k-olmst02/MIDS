@@ -211,7 +211,7 @@ class Collector:
         typ, _ts, serial = get_head(line)
         if f"pid={self.my_pid}" in line:
             return
-        if typ in ["PROCTITLE", "CWD", "PATH", "AVC"] or "syscall=1 " in line or "syscall=257" in line:
+        if typ in ["PROCTITLE", "CWD", "PATH", "AVC"] or "syscall=1 " in line or "syscall=257" in line or "syscall=0" in line or "syscall=87" in line or "syscall=89" in line:
             return
         if serial is None:
             self.put_evt(typ, line)
