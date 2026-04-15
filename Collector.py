@@ -85,6 +85,7 @@ class Collector:
     def __init__(self):
         os.makedirs(STATE_DIR, exist_ok=True)
         self.conn = sqlite3.connect(f"file:{DB_PATH}?mode=rw", uri=True)
+        self.my_pid = str(os.getpid())
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         need = {"events", "processes", "file_integrity", "network_activity"}
@@ -208,6 +209,8 @@ class Collector:
     #Process audit line
     def add_line(self, line):
         typ, _ts, serial = get_head(line)
+        if f"pid={self.my_pid}" in line:
+            return
         if typ in ["PROCTITLE", "CWD", "PATH", "AVC"] or "syscall=1 " in line or "syscall=1\s" in line:
             return
         if serial is None:
