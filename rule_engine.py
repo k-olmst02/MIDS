@@ -14,8 +14,8 @@ from zoneinfo import ZoneInfo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PATH = "logs.db"
-ALERTS_DB_PATH = "alerts.db"
+DB_PATH = os.path.join(BASE_DIR, "logs.db")
+ALERTS_DB_PATH = os.path.join(BASE_DIR, "alerts.db")
 
 STATE_FILE = os.path.join(BASE_DIR, "hids_collector/rule_engine_state.json")
 

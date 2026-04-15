@@ -6,6 +6,7 @@ from templates.alerts_template import alertsTemplate
 from PySide6.QtCore import QTimer, QProcess, Qt, QMargins
 from PySide6.QtCharts import QChart, QChartView, QBarSet, QBarSeries, QBarCategoryAxis, QValueAxis
 import sqlite3
+import os
 
 class MySideBar(QMainWindow, Ui_MainWindow):
     def __init__(self, username = "Default_Admin"):
@@ -46,8 +47,9 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         
         self.startMidsButton.toggled.connect(self.button_toggle)
         
-        self.alerts_db_path = "alerts.db"
-        self.db_path = "logs.db"
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.alerts_db_path = os.path.join(base_dir, "alerts.db")
+        self.db_path = os.path.join(base_dir, "logs.db")
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.auto_update)

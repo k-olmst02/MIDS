@@ -23,7 +23,7 @@ else:
     STATE_DIR = os.path.join(BASE_DIR, "hids_collector")
 
 OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
-DB_PATH = "logs.db"
+DB_PATH = os.path.join(BASE_DIR, "logs.db")
 SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10
 MAX_LINES_PER_CYCLE = 1000
 
@@ -85,17 +85,65 @@ class Collector:
     #Setup collector state
     def __init__(self):
         os.makedirs(STATE_DIR, exist_ok=True)
-        self.conn = sqlite3.connect(f"file:{DB_PATH}?mode=rw", uri=True)
+        self.conn = sqlite3.connect(DB_PATH)
         self.my_pid = str(os.getpid())
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
-        need = {"events", "processes", "file_integrity", "network_activity"}
-        found = {r[0] for r in self.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('events','processes','file_integrity','network_activity')"
-        ).fetchall()}
-        miss = sorted(need - found)
-        if miss:
-            raise RuntimeError(f"Missing tables: {', '.join(miss)}")
+        # Ensure required tables exist so the collector can start cleanly
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              event_type TEXT NOT NULL,
+              severity TEXT NOT NULL,
+              source TEXT,
+              message TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS processes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              pid INTEGER NOT NULL,
+              ppid INTEGER,
+              username TEXT,
+              command TEXT,
+              hash TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS file_integrity (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              path TEXT NOT NULL,
+              action TEXT NOT NULL,
+              old_hash TEXT,
+              new_hash TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS network_activity (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              local_address TEXT,
+              remote_address TEXT,
+              pid INTEGER,
+              process_name TEXT
+            );
+            """
+        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_time ON events(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_file_time ON file_integrity(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_net_time ON network_activity(timestamp);")
+        self.conn.commit()
         self.off = 0
         self.ino = 0
         self.fp = None
@@ -125,6 +173,9 @@ class Collector:
     def open_log(self):
         try:
             st = os.stat(AUDIT_LOG)
+        except PermissionError as e:
+            logging.error("permission denied reading audit log %s (%s)", AUDIT_LOG, e)
+            return False
         except FileNotFoundError:
             return False
         rot = self.ino and st.st_ino != self.ino
@@ -132,7 +183,12 @@ class Collector:
         if self.fp is None or rot or shr:
             if self.fp:
                 self.fp.close()
-            self.fp = io.open(AUDIT_LOG, "r", encoding="utf-8", errors="replace")
+            try:
+                self.fp = io.open(AUDIT_LOG, "r", encoding="utf-8", errors="replace")
+            except PermissionError as e:
+                logging.error("permission denied opening audit log %s (%s)", AUDIT_LOG, e)
+                self.fp = None
+                return False
             self.ino = st.st_ino
             if rot or shr:
                 self.off = 0
