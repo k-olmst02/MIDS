@@ -10,6 +10,7 @@ import stat
 import time
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -92,7 +93,7 @@ def create_alert(alerts_conn, rule_name, severity, description, event_ref=None):
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
-            datetime.utcnow().isoformat(),
+            get_eastern_timestamp(),
             rule_name,
             severity,
             "rules_engine",
