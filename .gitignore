@@ -7,3 +7,5 @@ auditlogs/logs.db
 alerts.db
 logs.db
 auditlogs/
+logs.db-shm
+logs.db-wal
