@@ -64,9 +64,6 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.logs_1.clicked.connect(self.switch_to_logsPage)
         self.logs_2.clicked.connect(self.switch_to_logsPage)
         
-        self.configuration_1.clicked.connect(self.switch_to_configurationPage)
-        self.configuration_2.clicked.connect(self.switch_to_configurationPage)
-        
         self.logsWidget = logsTemplate()
         self.logsTableView.setModel(self.logsWidget)
         self.recentEventsTable.setModel(self.logsWidget)
@@ -131,8 +128,6 @@ class MySideBar(QMainWindow, Ui_MainWindow):
     def switch_to_logsPage(self):
         self.stackedWidget.setCurrentIndex(1)
         
-    def switch_to_configurationPage(self):
-        self.stackedWidget.setCurrentIndex(2)
         
     def auto_update(self):
         if hasattr(self, 'logsWidget'):
