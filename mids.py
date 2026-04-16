@@ -7,6 +7,7 @@ from PySide6.QtCore import QTimer, QProcess, Qt, QMargins
 from PySide6.QtCharts import QChart, QChartView, QBarSet, QBarSeries, QBarCategoryAxis, QValueAxis
 import sqlite3
 import os
+import sys
 
 class MySideBar(QMainWindow, Ui_MainWindow):
     def __init__(self, username = "Default_Admin"):
@@ -24,11 +25,9 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.chart_timer = QTimer()
         self.chart_timer.timeout.connect(self.update_attack_data)
         self.chart_timer.start(20000)
-        
-        self.process = QProcess(self)
-        self.process.finished.connect(self.on_process_finished)
-        self.rule_engine_process = QProcess(self)
-        self.rule_engine_process.finished.connect(self.on_process_finished)
+
+        self.process = None
+        self.rule_engine_process = None
         
         if hasattr(self, 'user_label'):
             self.user_label.setText(f"{username}")
@@ -48,8 +47,12 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         self.startMidsButton.toggled.connect(self.button_toggle)
         
         base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.base_dir = base_dir
+        self.collector_path = os.path.join(base_dir, "Collector.py")
+        self.rule_engine_path = os.path.join(base_dir, "rule_engine.py")
         self.alerts_db_path = os.path.join(base_dir, "alerts.db")
         self.db_path = os.path.join(base_dir, "logs.db")
+        self._create_managed_processes()
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.auto_update)
@@ -101,6 +104,45 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         
         self.dashboardAlertsTable.setColumnHidden(1, True)
         self.dashboardAlertsTable.setColumnHidden(4, True)
+
+    def _build_process(self, script_path, label):
+        process = QProcess(self)
+        process.setProgram(sys.executable)
+        process.setArguments([script_path])
+        process.setWorkingDirectory(self.base_dir)
+        process.setProcessChannelMode(QProcess.ForwardedChannels)
+        process.finished.connect(self.on_process_finished)
+        process.errorOccurred.connect(
+            lambda error, name=label, proc=process: print(
+                f"{name} process error ({error}): {proc.errorString()}"
+            )
+        )
+        return process
+
+    def _create_managed_processes(self):
+        self.process = self._build_process(self.collector_path, "Collector")
+        self.rule_engine_process = self._build_process(self.rule_engine_path, "Rule engine")
+
+    def _ensure_stopped(self, process, label):
+        if process is None or process.state() == QProcess.NotRunning:
+            return
+
+        process.terminate()
+        if not process.waitForFinished(3000):
+            print(f"{label} did not stop gracefully; killing it.")
+            process.kill()
+            process.waitForFinished(3000)
+
+    def _start_process(self, process, label):
+        if process.state() != QProcess.NotRunning:
+            print(f"{label} is already running.")
+            return True
+
+        process.start()
+        if not process.waitForStarted(3000):
+            print(f"Failed to start {label}: {process.errorString()}")
+            return False
+        return True
       
     def on_process_finished(self):
         if self.process.state() == QProcess.NotRunning and self.rule_engine_process.state() == QProcess.NotRunning:
@@ -108,14 +150,22 @@ class MySideBar(QMainWindow, Ui_MainWindow):
         
     def button_toggle(self, checked):
         if checked:
-            self.process.start("python", ["Collector.py"])
-            self.process.setProcessChannelMode(QProcess.ForwardedChannels) 
-            if not self.process.waitForStarted():
-                    print("Failed to start process:", self.process.errorString())
-            self.rule_engine_process.start("python", ["rule_engine.py"])
+            self._ensure_stopped(self.process, "Collector")
+            self._ensure_stopped(self.rule_engine_process, "Rule engine")
+            self._create_managed_processes()
+
+            collector_started = self._start_process(self.process, "Collector")
+            rule_engine_started = self._start_process(self.rule_engine_process, "Rule engine")
+
+            if not (collector_started and rule_engine_started):
+                self._ensure_stopped(self.process, "Collector")
+                self._ensure_stopped(self.rule_engine_process, "Rule engine")
+                self.startMidsButton.blockSignals(True)
+                self.startMidsButton.setChecked(False)
+                self.startMidsButton.blockSignals(False)
         else:
-            self.process.kill()
-            self.rule_engine_process.kill()
+            self._ensure_stopped(self.process, "Collector")
+            self._ensure_stopped(self.rule_engine_process, "Rule engine")
             
              
         
