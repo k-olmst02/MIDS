@@ -26,13 +26,14 @@ OFFSET_FILE = os.path.join(STATE_DIR, "audit.offset")
 DB_PATH = os.path.join(BASE_DIR, "logs.db")
 SLEEP, WAIT, FILE_WIN, PROC_WIN = 1.0, 1.5, 30, 10
 MAX_LINES_PER_CYCLE = 1000
+O_WRONLY, O_RDWR, O_CREAT, O_TRUNC, O_APPEND = 1, 2, 64, 512, 1024
 
 TYPE_RE = re.compile(r"^type=([A-Z_]+)\s")
 MSG_RE = re.compile(r"msg=audit\((\d+(?:\.\d+)?):(\d+)\):")
 KV_RE = re.compile(r'(\w+)=("([^"\\]|\\.)*"|\S+)')
 SYSCALL_NAME = {"59": "execve", "2": "open", "257": "open", "1": "write", "87": "unlink", "263": "unlink",
                 "82": "rename", "264": "rename", "90": "chmod", "268": "chmod", "42": "connect",
-                "43": "accept", "49": "bind"}
+                "43": "accept", "49": "bind", "288": "accept"}
 FILE_ACTIONS, NET_ACTIONS = {"open", "write", "unlink", "rename", "chmod"}, {"connect", "accept", "bind"}
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -79,6 +80,25 @@ def get_addr(hex_s):
     if fam == 2 and len(data) >= 8:
         return f"{'.'.join(str(x) for x in data[4:8])}:{(data[2] << 8) | data[3]}"
     return hex_s
+
+
+def parse_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(str(value), 0)
+    except Exception:
+        return None
+
+
+def normalize_file_action(syscall_name, flags):
+    if syscall_name != "open":
+        return syscall_name
+    if flags is None:
+        return syscall_name
+    if flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND):
+        return "write"
+    return syscall_name
 
 
 class Collector:
@@ -165,6 +185,7 @@ class Collector:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_file_time ON file_integrity(timestamp);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_net_time ON network_activity(timestamp);")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_network_dedup ON network_activity(local_address, remote_address, pid);")
         conn.commit()
 
     #Save read offset
@@ -205,6 +226,7 @@ class Collector:
                 self.fp.seek(0, 2)
                 self.off = self.fp.tell()
             logging.info("audit open inode=%s off=%s", self.ino, self.off)
+            self.save_off(True)
         return True
 
     #Store process row
@@ -293,8 +315,10 @@ class Collector:
         ev["raw"].append(line)
         kv = get_kv(line)
         if typ == "SYSCALL":
+            raw_syscall = get_sys(kv.get("syscall", ""))
+            flag_arg = kv.get("a1", "") if raw_syscall == "open" else kv.get("a2", "")
             ev["syscall"], ev["pid"], ev["ppid"], ev["uid"], ev["exe"], ev["comm"] = (
-                get_sys(kv.get("syscall", "")), kv.get("pid", ""), kv.get("ppid", ""),
+                normalize_file_action(raw_syscall, parse_int(flag_arg)), kv.get("pid", ""), kv.get("ppid", ""),
                 kv.get("uid", ""), kv.get("exe", ""), kv.get("comm", "")
             )
         elif typ == "EXECVE":

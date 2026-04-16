@@ -9,6 +9,7 @@ import sqlite3
 import stat
 import time
 import json
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -20,6 +21,7 @@ ALERTS_DB_PATH = os.path.join(BASE_DIR, "alerts.db")
 STATE_FILE = os.path.join(BASE_DIR, "hids_collector/rule_engine_state.json")
 
 CHECK_INTERVAL = 5
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Rule Thresholds
 BRUTE_FORCE_THRESHOLD = 5
@@ -45,7 +47,7 @@ CRITICAL_FILES = [
 ]
 
 # Authorized Users
-AUTHORIZED_DB_USER = "1000"
+AUTHORIZED_DB_USER = "mids"
 EXPECTED_DB_MODE = 0o666
 
 # Suspicious Ports
@@ -53,6 +55,13 @@ SUSPICIOUS_PORTS = [4444, 5555, 6666, 8888, 9999]
 
 def get_eastern_timestamp():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%m/%d/%Y %I:%M:%S %p")
+
+
+def parse_alert_timestamp(value):
+    try:
+        return datetime.strptime(value, "%m/%d/%Y %I:%M:%S %p")
+    except Exception:
+        return None
 
 def connect_db():
     """Connect to the logs database."""
@@ -125,13 +134,13 @@ def alert_exists(alerts_conn, rule_name, event_ref):
 
 
 def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains=None):
-    """Simple duplicate check for custom timestamp strings."""
+    """Duplicate check that respects the configured time window."""
     cur = alerts_conn.cursor()
 
     if description_contains:
         cur.execute(
             """
-            SELECT 1
+            SELECT timestamp
             FROM alerts
             WHERE rule_name = ?
               AND description LIKE ?
@@ -143,7 +152,7 @@ def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains
     else:
         cur.execute(
             """
-            SELECT 1
+            SELECT timestamp
             FROM alerts
             WHERE rule_name = ?
             ORDER BY id DESC
@@ -152,7 +161,15 @@ def recent_alert_exists(alerts_conn, rule_name, seconds=60, description_contains
             (rule_name,),
         )
 
-    return cur.fetchone() is not None
+    row = cur.fetchone()
+    if not row:
+        return False
+
+    alert_time = parse_alert_timestamp(row["timestamp"])
+    if not alert_time:
+        return True
+
+    return (datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None) - alert_time).total_seconds() <= seconds
 
 
 def get_current_max_ids(logs_conn):
@@ -215,10 +232,21 @@ def load_state(logs_conn):
 def save_state(state):
     """Save last processed IDs to JSON state file."""
     try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         with open(STATE_FILE, "w") as f:
             json.dump(state, f)
     except Exception as e:
         print(f"[STATE SAVE ERROR] {e}")
+
+
+def run_rule(rule_name, fn, *args):
+    """Run one rule without blocking the rest of the cycle."""
+    started = time.time()
+    try:
+        fn(*args)
+        logging.info("rule ok: %s (%.3fs)", rule_name, time.time() - started)
+    except Exception:
+        logging.exception("rule failed: %s", rule_name)
 
 
 # --------------------------
@@ -249,7 +277,7 @@ def check_brute_force(logs_conn, alerts_conn, state):
 
     rows = cur.fetchall()
 
-    if len(rows) >= 3:
+    if len(rows) >= BRUTE_FORCE_THRESHOLD:
         newest = rows[0]["id"]
 
         if not alert_exists(alerts_conn, "Brute Force Login", newest):
@@ -323,10 +351,10 @@ def check_honeypot_access(logs_conn, alerts_conn, state):
 
     cur.execute(
         """
-        SELECT rowid AS event_id, local_address, remote_address, pid, process_name
+        SELECT id AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
-        WHERE rowid > ?
-        ORDER BY rowid DESC
+        WHERE id > ?
+        ORDER BY id DESC
         LIMIT 100
         """,
         (state["honeypot_network"],)
@@ -419,10 +447,10 @@ def check_new_processes(logs_conn, alerts_conn, state):
 
     cur.execute(
         """
-        SELECT rowid AS event_id, pid, username, command
+        SELECT id AS event_id, pid, username, command
         FROM processes
-        WHERE rowid > ?
-        ORDER BY rowid DESC
+        WHERE id > ?
+        ORDER BY id DESC
         LIMIT 100
         """,
         (state["new_processes"],)
@@ -460,16 +488,16 @@ def check_privilege_escalation(logs_conn, alerts_conn, state):
 
     cur.execute(
         """
-        SELECT rowid AS event_id, pid, username, command
+        SELECT id AS event_id, pid, username, command
         FROM processes
-        WHERE rowid > ?
+        WHERE id > ?
           AND (
             LOWER(command) LIKE '%sudo%'
             OR LOWER(command) LIKE '%su %'
             OR LOWER(command) LIKE '%/bin/su%'
             OR LOWER(command) LIKE '%/usr/bin/sudo%'
           )
-        ORDER BY rowid DESC
+        ORDER BY id DESC
         LIMIT 50
         """,
         (state["priv_esc_events"],)
@@ -506,16 +534,19 @@ def check_event_escalation(logs_conn, alerts_conn):
 
     cur.execute(
         """
-        SELECT COUNT(*) AS count
+        SELECT timestamp
         FROM alerts
         WHERE (severity = 'high' OR severity = 'critical')
           AND rule_name != 'Event Escalation'
-          AND timestamp >= datetime('now', '-1 minutes')
         """
     )
 
-    result = cur.fetchone()
-    count = result["count"] if result else 0
+    cutoff = datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None).timestamp() - 60
+    count = 0
+    for row in cur.fetchall():
+        alert_time = parse_alert_timestamp(row["timestamp"])
+        if alert_time and alert_time.timestamp() >= cutoff:
+            count += 1
 
     if count >= EVENT_ESCALATION_THRESHOLD:
         if not recent_alert_exists(alerts_conn, "Event Escalation", 10):
@@ -538,10 +569,10 @@ def check_network_anomalies(logs_conn, alerts_conn, state):
 
     cur.execute(
         """
-        SELECT rowid AS event_id, local_address, remote_address, pid, process_name
+        SELECT id AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
-        WHERE rowid > ?
-        ORDER BY rowid DESC
+        WHERE id > ?
+        ORDER BY id DESC
         LIMIT 100
         """,
         (state["network_anomalies"],)
@@ -582,11 +613,11 @@ def check_file_modifications(logs_conn, alerts_conn, state):
         SELECT id, path, action
         FROM file_integrity
         WHERE id > ?
-          AND action IN ('write', 'unlink', 'rename', 'chmod')
+          AND action IN (?, ?, ?, ?)
         ORDER BY id DESC
         LIMIT 100
         """,
-        (state["file_modifications"],)
+        (state["file_modifications"], *RISKY_FILE_ACTIONS)
     )
 
     rows = cur.fetchall()
@@ -621,10 +652,10 @@ def check_suspicious_ports(logs_conn, alerts_conn, state):
 
     cur.execute(
         """
-        SELECT rowid AS event_id, local_address, remote_address, pid, process_name
+        SELECT id AS event_id, local_address, remote_address, pid, process_name
         FROM network_activity
-        WHERE rowid > ?
-        ORDER BY rowid DESC
+        WHERE id > ?
+        ORDER BY id DESC
         LIMIT 100
         """,
         (state["suspicious_ports"],)
@@ -690,16 +721,16 @@ def main():
             alerts_conn = connect_alerts_db()
             state = load_state(logs_conn)
 
-            check_brute_force(logs_conn, alerts_conn, state)
-            check_db_permissions(logs_conn, alerts_conn)
-            check_honeypot_access(logs_conn, alerts_conn, state)
-            check_file_integrity(logs_conn, alerts_conn, state)
-            check_new_processes(logs_conn, alerts_conn, state)
-            check_privilege_escalation(logs_conn, alerts_conn, state)
-            check_event_escalation(logs_conn, alerts_conn)
-            check_network_anomalies(logs_conn, alerts_conn, state)
-            check_file_modifications(logs_conn, alerts_conn, state)
-            check_suspicious_ports(logs_conn, alerts_conn, state)
+            run_rule("Brute Force Detection", check_brute_force, logs_conn, alerts_conn, state)
+            run_rule("Database Access Control", check_db_permissions, logs_conn, alerts_conn)
+            run_rule("Honeypot Access Detection", check_honeypot_access, logs_conn, alerts_conn, state)
+            run_rule("File Integrity Verification", check_file_integrity, logs_conn, alerts_conn, state)
+            run_rule("New Process Detection", check_new_processes, logs_conn, alerts_conn, state)
+            run_rule("Privilege Escalation Detection", check_privilege_escalation, logs_conn, alerts_conn, state)
+            run_rule("Event Escalation Detection", check_event_escalation, logs_conn, alerts_conn)
+            run_rule("Network Anomaly Detection", check_network_anomalies, logs_conn, alerts_conn, state)
+            run_rule("File Modification Detection", check_file_modifications, logs_conn, alerts_conn, state)
+            run_rule("Suspicious Port Activity Detection", check_suspicious_ports, logs_conn, alerts_conn, state)
 
             save_state(state)
 
