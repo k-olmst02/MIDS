@@ -85,8 +85,65 @@ class Collector:
     #Setup collector state
     def __init__(self):
         os.makedirs(STATE_DIR, exist_ok=True)
-        self.conn = self.open_db()
+        self.conn = sqlite3.connect(DB_PATH)
         self.my_pid = str(os.getpid())
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        # Ensure required tables exist so the collector can start cleanly
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              event_type TEXT NOT NULL,
+              severity TEXT NOT NULL,
+              source TEXT,
+              message TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS processes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              pid INTEGER NOT NULL,
+              ppid INTEGER,
+              username TEXT,
+              command TEXT,
+              hash TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS file_integrity (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              path TEXT NOT NULL,
+              action TEXT NOT NULL,
+              old_hash TEXT,
+              new_hash TEXT
+            );
+            """
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS network_activity (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              local_address TEXT,
+              remote_address TEXT,
+              pid INTEGER,
+              process_name TEXT
+            );
+            """
+        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_time ON events(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_file_time ON file_integrity(timestamp);")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_net_time ON network_activity(timestamp);")
+        self.conn.commit()
         self.off = 0
         self.ino = 0
         self.fp = None
@@ -101,71 +158,6 @@ class Collector:
                 self.ino = int(d.get("inode", 0))
         except Exception:
             pass
-
-    #Open database connection
-    def open_db(self):
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        self.ensure_schema(conn)
-        return conn
-
-    #Ensure required tables and indexes exist
-    def ensure_schema(self, conn):
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS events (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              event_type TEXT NOT NULL,
-              severity TEXT NOT NULL,
-              source TEXT,
-              message TEXT
-            );
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS processes (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              pid INTEGER NOT NULL,
-              ppid INTEGER,
-              username TEXT,
-              command TEXT,
-              hash TEXT
-            );
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS file_integrity (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              path TEXT NOT NULL,
-              action TEXT NOT NULL,
-              old_hash TEXT,
-              new_hash TEXT
-            );
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS network_activity (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              local_address TEXT,
-              remote_address TEXT,
-              pid INTEGER,
-              process_name TEXT
-            );
-            """
-        )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_time ON events(timestamp);")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_processes_time ON processes(timestamp);")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_file_time ON file_integrity(timestamp);")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_net_time ON network_activity(timestamp);")
-        conn.commit()
 
     #Save read offset
     def save_off(self, force=False):
@@ -317,18 +309,17 @@ class Collector:
                 done.append(serial)
         for serial in done:
             del self.buf[serial]
-        return len(done)
 
     #Run main loop
     def run(self):
         logging.info("collector started")
         try:
             while True:
-                try:
-                    if self.open_log():
-                        has_new = False
-                        lines_processed = 0
-                        while lines_processed < MAX_LINES_PER_CYCLE:
+                if self.open_log():
+                    has_new = False
+                    lines_processed = 0
+                    while lines_processed < MAX_LINES_PER_CYCLE:
+                        while True:
                             line = self.fp.readline()
                             if not line:
                                 break
@@ -336,19 +327,10 @@ class Collector:
                             self.off = self.fp.tell()
                             self.add_line(line)
                             lines_processed += 1
-                        flushed = self.flush_buf(False)
-                        if has_new or flushed:
+                        self.flush_buf(False)
+                        if has_new:
                             self.conn.commit()
                             self.save_off(False)
-                except sqlite3.Error:
-                    logging.exception("collector database error; reconnecting")
-                    try:
-                        self.conn.close()
-                    except Exception:
-                        pass
-                    self.conn = self.open_db()
-                except Exception:
-                    logging.exception("collector loop error")
                 time.sleep(SLEEP)
         except KeyboardInterrupt:
             logging.info("collector stopping")
