@@ -85,17 +85,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.startMidsButton)
 
-        self.pushButton_15 = QPushButton(self.header_widget)
-        self.pushButton_15.setObjectName(u"pushButton_15")
-        self.pushButton_15.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton_15.setStyleSheet(u"border:none;")
-        icon2 = QIcon()
-        icon2.addFile(u":/images/settingsicon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.pushButton_15.setIcon(icon2)
-        self.pushButton_15.setIconSize(QSize(20, 20))
-
-        self.horizontalLayout_3.addWidget(self.pushButton_15)
-
 
         self.verticalLayout_5.addWidget(self.header_widget)
 
@@ -212,8 +201,8 @@ class Ui_MainWindow(object):
         self.dashboard_1 = QPushButton(self.icon_widget)
         self.dashboard_1.setObjectName(u"dashboard_1")
         self.dashboard_1.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        icon3 = QIcon(QIcon.fromTheme(u"go-home"))
-        self.dashboard_1.setIcon(icon3)
+        icon2 = QIcon(QIcon.fromTheme(u"go-home"))
+        self.dashboard_1.setIcon(icon2)
         self.dashboard_1.setCheckable(True)
         self.dashboard_1.setAutoExclusive(True)
 
@@ -222,8 +211,8 @@ class Ui_MainWindow(object):
         self.alerts_1 = QPushButton(self.icon_widget)
         self.alerts_1.setObjectName(u"alerts_1")
         self.alerts_1.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        icon4 = QIcon(QIcon.fromTheme(u"dialog-warning"))
-        self.alerts_1.setIcon(icon4)
+        icon3 = QIcon(QIcon.fromTheme(u"dialog-warning"))
+        self.alerts_1.setIcon(icon3)
         self.alerts_1.setCheckable(True)
         self.alerts_1.setAutoExclusive(True)
 
@@ -232,22 +221,12 @@ class Ui_MainWindow(object):
         self.logs_1 = QPushButton(self.icon_widget)
         self.logs_1.setObjectName(u"logs_1")
         self.logs_1.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        icon5 = QIcon(QIcon.fromTheme(u"accessories-dictionary"))
-        self.logs_1.setIcon(icon5)
+        icon4 = QIcon(QIcon.fromTheme(u"accessories-dictionary"))
+        self.logs_1.setIcon(icon4)
         self.logs_1.setCheckable(True)
         self.logs_1.setAutoExclusive(True)
 
         self.verticalLayout.addWidget(self.logs_1)
-
-        self.configuration_1 = QPushButton(self.icon_widget)
-        self.configuration_1.setObjectName(u"configuration_1")
-        self.configuration_1.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        icon6 = QIcon(QIcon.fromTheme(u"document-properties"))
-        self.configuration_1.setIcon(icon6)
-        self.configuration_1.setCheckable(True)
-        self.configuration_1.setAutoExclusive(True)
-
-        self.verticalLayout.addWidget(self.configuration_1)
 
 
         self.verticalLayout_3.addLayout(self.verticalLayout)
@@ -259,8 +238,8 @@ class Ui_MainWindow(object):
         self.pushButton_6 = QPushButton(self.icon_widget)
         self.pushButton_6.setObjectName(u"pushButton_6")
         self.pushButton_6.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        icon7 = QIcon(QIcon.fromTheme(u"system-shutdown"))
-        self.pushButton_6.setIcon(icon7)
+        icon5 = QIcon(QIcon.fromTheme(u"system-shutdown"))
+        self.pushButton_6.setIcon(icon5)
         self.pushButton_6.setCheckable(True)
 
         self.verticalLayout_3.addWidget(self.pushButton_6)
@@ -324,7 +303,7 @@ class Ui_MainWindow(object):
         self.dashboard_2 = QPushButton(self.icon_name_widget)
         self.dashboard_2.setObjectName(u"dashboard_2")
         self.dashboard_2.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.dashboard_2.setIcon(icon3)
+        self.dashboard_2.setIcon(icon2)
         self.dashboard_2.setCheckable(True)
         self.dashboard_2.setAutoExclusive(True)
 
@@ -333,7 +312,7 @@ class Ui_MainWindow(object):
         self.alerts_2 = QPushButton(self.icon_name_widget)
         self.alerts_2.setObjectName(u"alerts_2")
         self.alerts_2.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.alerts_2.setIcon(icon4)
+        self.alerts_2.setIcon(icon3)
         self.alerts_2.setCheckable(True)
         self.alerts_2.setAutoExclusive(True)
 
@@ -342,20 +321,11 @@ class Ui_MainWindow(object):
         self.logs_2 = QPushButton(self.icon_name_widget)
         self.logs_2.setObjectName(u"logs_2")
         self.logs_2.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.logs_2.setIcon(icon5)
+        self.logs_2.setIcon(icon4)
         self.logs_2.setCheckable(True)
         self.logs_2.setAutoExclusive(True)
 
         self.verticalLayout_2.addWidget(self.logs_2)
-
-        self.configuration_2 = QPushButton(self.icon_name_widget)
-        self.configuration_2.setObjectName(u"configuration_2")
-        self.configuration_2.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.configuration_2.setIcon(icon6)
-        self.configuration_2.setCheckable(True)
-        self.configuration_2.setAutoExclusive(True)
-
-        self.verticalLayout_2.addWidget(self.configuration_2)
 
 
         self.verticalLayout_4.addLayout(self.verticalLayout_2)
@@ -367,7 +337,7 @@ class Ui_MainWindow(object):
         self.pushButton_12 = QPushButton(self.icon_name_widget)
         self.pushButton_12.setObjectName(u"pushButton_12")
         self.pushButton_12.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton_12.setIcon(icon7)
+        self.pushButton_12.setIcon(icon5)
         self.pushButton_12.setCheckable(True)
 
         self.verticalLayout_4.addWidget(self.pushButton_12)
@@ -380,14 +350,12 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         self.menu.toggled.connect(self.icon_widget.setHidden)
         self.menu.toggled.connect(self.icon_name_widget.setVisible)
-        self.configuration_1.toggled.connect(self.configuration_2.setChecked)
         self.logs_1.toggled.connect(self.logs_2.setChecked)
         self.alerts_1.toggled.connect(self.alerts_2.setChecked)
         self.dashboard_1.toggled.connect(self.dashboard_2.setChecked)
         self.dashboard_2.toggled.connect(self.dashboard_1.setChecked)
         self.alerts_2.toggled.connect(self.alerts_1.setChecked)
         self.logs_2.toggled.connect(self.logs_1.setChecked)
-        self.configuration_2.toggled.connect(self.configuration_1.setChecked)
         self.pushButton_6.toggled.connect(MainWindow.close)
         self.pushButton_12.toggled.connect(MainWindow.close)
 
@@ -402,7 +370,6 @@ class Ui_MainWindow(object):
         self.menu.setText("")
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"Michigan Intrusion Detection System", None))
         self.startMidsButton.setText("")
-        self.pushButton_15.setText("")
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Threat Distribution", None))
         self.datContainer.setTitle(QCoreApplication.translate("MainWindow", u"Live Alert Feed", None))
         self.recentEvents.setTitle(QCoreApplication.translate("MainWindow", u"Recent Events", None))
@@ -411,14 +378,12 @@ class Ui_MainWindow(object):
         self.dashboard_1.setText("")
         self.alerts_1.setText("")
         self.logs_1.setText("")
-        self.configuration_1.setText("")
         self.pushButton_6.setText("")
         self.label.setText("")
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"MIDS", None))
         self.dashboard_2.setText(QCoreApplication.translate("MainWindow", u"Dashboard", None))
         self.alerts_2.setText(QCoreApplication.translate("MainWindow", u"Alerts", None))
         self.logs_2.setText(QCoreApplication.translate("MainWindow", u"Logs", None))
-        self.configuration_2.setText(QCoreApplication.translate("MainWindow", u"Configuration", None))
         self.pushButton_12.setText(QCoreApplication.translate("MainWindow", u"Sign Out", None))
     # retranslateUi
 
