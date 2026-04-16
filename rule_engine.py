@@ -24,7 +24,7 @@ CHECK_INTERVAL = 5
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Rule Thresholds
-BRUTE_FORCE_THRESHOLD = 5
+BRUTE_FORCE_THRESHOLD = 2
 NEW_PROCESS_THRESHOLD = 50
 NETWORK_ACTIVITY_THRESHOLD = 75
 FILE_MOD_THRESHOLD = 50
