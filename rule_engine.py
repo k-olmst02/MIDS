@@ -47,7 +47,7 @@ CRITICAL_FILES = [
 ]
 
 # Authorized Users
-AUTHORIZED_DB_USER = "1000"
+AUTHORIZED_DB_USER = "mids"
 EXPECTED_DB_MODE = 0o644
 
 # Suspicious Ports
